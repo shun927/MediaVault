@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import StarRating from '@/components/ui/StarRating';
-import { createClient } from '@/lib/supabase';
-import type { Movie, Book } from '@/lib/types';
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@/lib/supabase';
+import type { Book, Movie } from '@/lib/types';
+import styles from './DashboardPage.module.css';
 
 type ItemFilter = 'all' | 'movie' | 'book';
 
@@ -19,49 +19,52 @@ interface DashboardItem {
 }
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState({ totalItems: 0 });
     const [items, setItems] = useState<DashboardItem[]>([]);
     const [filterType, setFilterType] = useState<ItemFilter>('all');
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({ totalItems: 0 });
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        async function loadData() {
+            const supabase = createClient();
+            const [moviesRes, booksRes, moviesCount, booksCount] = await Promise.all([
+                supabase.from('movies').select('*').order('created_at', { ascending: false }).limit(30),
+                supabase.from('books').select('*').order('created_at', { ascending: false }).limit(30),
+                supabase.from('movies').select('*', { count: 'exact', head: true }),
+                supabase.from('books').select('*', { count: 'exact', head: true }),
+            ]);
 
-    async function loadData() {
-        const supabase = createClient();
-        const [moviesRes, booksRes, moviesCount, booksCount] = await Promise.all([
-            supabase.from('movies').select('*').order('created_at', { ascending: false }).limit(18),
-            supabase.from('books').select('*').order('created_at', { ascending: false }).limit(18),
-            supabase.from('movies').select('*', { count: 'exact', head: true }),
-            supabase.from('books').select('*', { count: 'exact', head: true }),
-        ]);
+            const movieItems = ((moviesRes.data as Movie[]) || []).map((movie) => ({
+                id: movie.id,
+                type: 'movie' as const,
+                title: movie.title,
+                imageUrl: movie.poster_url,
+                rating: movie.rating,
+                createdAt: movie.created_at,
+                href: `/movies/${movie.id}`,
+            }));
+            const bookItems = ((booksRes.data as Book[]) || []).map((book) => ({
+                id: book.id,
+                type: 'book' as const,
+                title: book.title,
+                imageUrl: book.cover_url,
+                rating: book.rating,
+                createdAt: book.created_at,
+                href: `/books/${book.id}`,
+            }));
 
-        const movieItems = ((moviesRes.data as Movie[]) || []).map((movie) => ({
-            id: movie.id,
-            type: 'movie' as const,
-            title: movie.title,
-            imageUrl: movie.poster_url,
-            rating: movie.rating,
-            createdAt: movie.created_at,
-            href: `/movies/${movie.id}`,
-        }));
-        const bookItems = ((booksRes.data as Book[]) || []).map((book) => ({
-            id: book.id,
-            type: 'book' as const,
-            title: book.title,
-            imageUrl: book.cover_url,
-            rating: book.rating,
-            createdAt: book.created_at,
-            href: `/books/${book.id}`,
-        }));
+            const merged = [...movieItems, ...bookItems].sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
 
-        const merged = [...movieItems, ...bookItems].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        setItems(merged);
-        setStats({ totalItems: (moviesCount.count || 0) + (booksCount.count || 0) });
-        setLoading(false);
-    }
+            setItems(merged);
+            setStats({ totalItems: (moviesCount.count || 0) + (booksCount.count || 0) });
+            setLoading(false);
+        }
+
+        loadData();
+    }, []);
 
     const filteredItems = useMemo(() => {
         const normalized = search.trim().toLowerCase();
@@ -72,78 +75,94 @@ export default function DashboardPage() {
         });
     }, [items, filterType, search]);
 
+    function toStars(value: number | null) {
+        const rounded = Math.max(0, Math.min(5, Math.round(value || 0)));
+        return `${'★'.repeat(rounded)}${'☆'.repeat(5 - rounded)}`;
+    }
+
+    function toDateLabel(date: string) {
+        const parsed = new Date(date);
+        if (Number.isNaN(parsed.getTime())) return '--';
+        return parsed.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
+    }
+
     return (
-        <div className="max-w-5xl mx-auto animate-fade-in">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#e1e3e5' }}>Library</h1>
-            </div>
-
-            {/* Stats */}
-            <div className="pb-6 mb-8" style={{ borderBottom: '1px solid #2c3440' }}>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: '#e1e3e5' }}>
-                    {loading ? '–' : stats.totalItems}
-                </p>
-                <p className="text-xs uppercase mt-0.5 font-medium" style={{ color: '#678', letterSpacing: '0.15em' }}>TOTAL ITEMS</p>
-            </div>
-
-            {/* Items */}
-            <section className="mb-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-semibold uppercase" style={{ color: '#9ab', letterSpacing: '0.1em' }}>Recent Items</h2>
-                    <Link href="/timeline" className="text-xs no-underline" style={{ color: '#678' }}>Timeline →</Link>
+        <div className={styles.root}>
+            <header className={styles.toolbar}>
+                <div className={styles.topStat}>
+                    <div className={styles.topStatValue}>{loading ? '-' : stats.totalItems}</div>
+                    <div className={styles.topStatLabel}>TOTAL ITEMS</div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2 mb-4">
-                    {([
-                        { label: 'All', value: 'all' },
-                        { label: 'Films', value: 'movie' },
-                        { label: 'Books', value: 'book' },
-                    ] as const).map((option) => (
-                        <button
-                            key={option.value}
-                            onClick={() => setFilterType(option.value)}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-[4px] transition-all cursor-pointer ${filterType === option.value
-                                ? 'text-white bg-white/12'
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5'
-                                }`}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search title..."
-                        className="ml-auto w-full sm:w-56 px-3 py-1.5 rounded-[4px] text-sm bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none"
-                    />
-                </div>
-
-                {loading ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {[...Array(6)].map((_, i) => (
-                            <div key={i} className="animate-shimmer aspect-[2/3]" style={{ borderRadius: '4px' }} />
+                <div className={styles.controls}>
+                    <div className={styles.filterTabs}>
+                        {([
+                            { label: 'All', value: 'all' },
+                            { label: 'Films', value: 'movie' },
+                            { label: 'Books', value: 'book' },
+                        ] as const).map((option) => (
+                            <button
+                                key={option.value}
+                                className={`${styles.filterBtn} ${filterType === option.value ? styles.filterBtnActive : ''}`}
+                                onClick={() => setFilterType(option.value)}
+                                type="button"
+                            >
+                                {option.label}
+                            </button>
                         ))}
                     </div>
+                    <input
+                        type="text"
+                        className={styles.searchInput}
+                        placeholder="SEARCH..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <button className={styles.iconBtn} aria-label="filters" type="button">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14" />
+                            <line x1="4" y1="10" x2="4" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12" y2="3" />
+                            <line x1="20" y1="21" x2="20" y2="16" />
+                            <line x1="20" y1="12" x2="20" y2="3" />
+                            <line x1="1" y1="14" x2="7" y2="14" />
+                            <line x1="9" y1="8" x2="15" y2="8" />
+                            <line x1="17" y1="16" x2="23" y2="16" />
+                        </svg>
+                    </button>
+                    <Link href="/timeline" className={styles.iconBtn} aria-label="timeline">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <line x1="3" y1="9" x2="21" y2="9" />
+                            <line x1="9" y1="21" x2="9" y2="9" />
+                        </svg>
+                    </Link>
+                </div>
+            </header>
+
+            <section className={styles.content}>
+                {loading ? (
+                    <div className={styles.grid}>
+                        {[...Array(10)].map((_, i) => <div key={i} className="animate-shimmer aspect-[2/3] rounded-[6px]" />)}
+                    </div>
+                ) : filteredItems.length === 0 ? (
+                    <div className={styles.empty}>No items match your filter.</div>
                 ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                        {filteredItems.length === 0 ? (
-                            <div className="col-span-full py-10 text-center" style={{ border: '1px dashed #2c3440', borderRadius: '4px' }}>
-                                <p className="text-sm" style={{ color: '#678' }}>No items match the current filter</p>
-                            </div>
-                        ) : filteredItems.map((item) => (
-                            <Link key={`${item.type}-${item.id}`} href={item.href} className="group no-underline">
-                                <div className="poster-card aspect-[2/3]" style={{ background: '#1c2228' }}>
+                    <div className={styles.grid}>
+                        {filteredItems.map((item) => (
+                            <Link key={`${item.type}-${item.id}`} href={item.href} className={styles.card}>
+                                <div className={styles.posterWrap}>
                                     {item.imageUrl ? (
-                                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                                        <img src={item.imageUrl} alt={item.title} className={styles.poster} />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-sm font-medium" style={{ color: '#556', background: '#242c34' }}>NO IMAGE</div>
+                                        <div className={styles.noImage}>NO IMAGE</div>
                                     )}
                                 </div>
-                                <p className="text-xs mt-1.5 truncate leading-tight" style={{ color: '#9ab' }}>{item.title}</p>
-                                <div className="mt-0.5">
-                                    <StarRating value={item.rating || 0} readonly size="sm" />
+                                <div className={styles.cardMeta}>
+                                    <h3 className={styles.cardTitle}>{item.title}</h3>
+                                    <span className={styles.dateChip}>{toDateLabel(item.createdAt)}</span>
                                 </div>
+                                <div className={styles.rating}>{toStars(item.rating)}</div>
                             </Link>
                         ))}
                     </div>

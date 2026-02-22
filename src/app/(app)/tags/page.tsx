@@ -19,8 +19,6 @@ export default function TagsPage() {
     const [form, setForm] = useState({ name: '', color: '#6366f1' });
     const [tagCounts, setTagCounts] = useState<Record<string, number>>({});
 
-    useEffect(() => { loadTags(); }, []);
-
     async function loadTags() {
         const supabase = createClient();
         const { data } = await supabase.from('tags').select('*').order('name');
@@ -39,6 +37,11 @@ export default function TagsPage() {
         setTagCounts(counts);
         setLoading(false);
     }
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadTags();
+    }, []);
 
     async function createTag() {
         if (!form.name.trim()) return;
@@ -71,7 +74,7 @@ export default function TagsPage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: '#e1e3e5' }}>Tags</h1>
+                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Tags</h1>
                     <p className="text-sm text-[var(--text-muted)] mt-1">{tags.length} tags</p>
                 </div>
                 <Button onClick={() => { setShowCreate(true); setForm({ name: '', color: '#6366f1' }); }}>+ Create Tag</Button>

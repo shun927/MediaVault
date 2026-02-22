@@ -15,36 +15,64 @@ export default function BookDetailPage() {
     const params = useParams();
     const router = useRouter();
     const [book, setBook] = useState<Book | null>(null);
-    const [tags, setTags] = useState<Tag[]>([]);
+    const [allTags, setAllTags] = useState<Tag[]>([]);
     const [history, setHistory] = useState<ReadingHistory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [savingMeta, setSavingMeta] = useState(false);
+    const [editMeta, setEditMeta] = useState({ rating: 0, status: 'wishlist', selectedTags: [] as string[] });
     const [showHistoryForm, setShowHistoryForm] = useState(false);
     const [historyForm, setHistoryForm] = useState({ date: new Date().toISOString().slice(0, 10), note: '' });
     const [savingHistory, setSavingHistory] = useState(false);
-
-    useEffect(() => {
-        loadBook();
-    }, [params.id]);
 
     async function loadBook() {
         const supabase = createClient();
         const { data } = await supabase.from('books').select('*').eq('id', params.id).single();
         if (!data) { router.push('/books'); return; }
 
-        const [{ data: bookTags }, { data: historyData }] = await Promise.all([
+        const [{ data: bookTags }, { data: historyData }, { data: allTagData }] = await Promise.all([
             supabase.from('book_tags').select('tag_id').eq('book_id', params.id),
             supabase.from('reading_history').select('*').eq('book_id', params.id).order('read_at', { ascending: false }),
+            supabase.from('tags').select('*').order('name'),
         ]);
 
-        if (bookTags && bookTags.length > 0) {
-            const tagIds = bookTags.map(bt => bt.tag_id);
-            const { data: tagData } = await supabase.from('tags').select('*').in('id', tagIds);
-            setTags((tagData as Tag[]) || []);
-        }
+        const selectedTagIds = (bookTags || []).map(bt => bt.tag_id);
+        const availableTags = (allTagData as Tag[]) || [];
+        setAllTags(availableTags);
+        setEditMeta({
+            rating: (data as Book).rating || 0,
+            status: (data as Book).status,
+            selectedTags: selectedTagIds,
+        });
 
         setHistory((historyData as ReadingHistory[]) || []);
         setBook(data as Book);
         setLoading(false);
+    }
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadBook();
+    }, [params.id]);
+
+    async function handleSaveMeta() {
+        if (!book) return;
+        setSavingMeta(true);
+        const supabase = createClient();
+        await supabase.from('books').update({
+            rating: editMeta.rating || null,
+            status: editMeta.status,
+            updated_at: new Date().toISOString(),
+        }).eq('id', book.id);
+
+        await supabase.from('book_tags').delete().eq('book_id', book.id);
+        if (editMeta.selectedTags.length > 0) {
+            await supabase.from('book_tags').insert(
+                editMeta.selectedTags.map(tagId => ({ book_id: book.id, tag_id: tagId }))
+            );
+        }
+
+        setSavingMeta(false);
+        await loadBook();
     }
 
     async function handleAddHistory() {
@@ -94,7 +122,7 @@ export default function BookDetailPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <Link href="/books" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]">← Back to Books</Link>
+            <Link href="/books" className="text-base font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]">← Back to Books</Link>
 
             <div className="flex flex-col sm:flex-row gap-6">
                 <div className="w-full sm:w-56 shrink-0">
@@ -113,16 +141,50 @@ export default function BookDetailPage() {
                         {book.author && <p className="text-[var(--text-muted)] mt-1">{book.author}</p>}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <StarRating value={book.rating || 0} readonly />
-                        <StatusBadge status={book.status} />
-                    </div>
-
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {tags.map(tag => <Badge key={tag.id} label={tag.name} color={tag.color} />)}
+                    <Card hover={false} className="space-y-3">
+                        <div>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
+                            <StarRating value={editMeta.rating} onChange={(v) => setEditMeta(prev => ({ ...prev, rating: v }))} />
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Status</label>
+                            <select
+                                value={editMeta.status}
+                                onChange={(e) => setEditMeta(prev => ({ ...prev, status: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm rounded-[8px] bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] focus:border-[var(--input-focus)] focus:outline-none"
+                            >
+                                <option value="read">Read</option>
+                                <option value="reading">Reading</option>
+                                <option value="wishlist">Wishlist</option>
+                            </select>
+                        </div>
+                        {allTags.length > 0 && (
+                            <div>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {allTags.map(tag => (
+                                        <button
+                                            key={tag.id}
+                                            type="button"
+                                            onClick={() => setEditMeta(prev => ({
+                                                ...prev,
+                                                selectedTags: prev.selectedTags.includes(tag.id)
+                                                    ? prev.selectedTags.filter(id => id !== tag.id)
+                                                    : [...prev.selectedTags, tag.id],
+                                            }))}
+                                            className={`cursor-pointer rounded-full ${editMeta.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''}`}
+                                        >
+                                            <Badge label={tag.name} color={tag.color} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-3">
+                            <Button onClick={handleSaveMeta} isLoading={savingMeta}>Save Changes</Button>
+                            <StatusBadge status={editMeta.status} />
+                        </div>
+                    </Card>
 
                     {book.note && (
                         <Card hover={false}>

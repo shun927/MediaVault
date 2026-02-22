@@ -8,7 +8,7 @@ import StarRating from '@/components/ui/StarRating';
 import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Input';
 import { createClient } from '@/lib/supabase';
 import type { TMDBSearchResult, BookSearchResult, Tag } from '@/lib/types';
 
@@ -139,33 +139,34 @@ function SearchPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <h1 className="text-2xl font-bold" style={{ color: '#e1e3e5' }}>Search</h1>
-
-            {/* タブ */}
-            <div className="flex gap-1 p-1 rounded-[4px] bg-[var(--bg-tertiary)] w-fit">
-                {(['movies', 'books'] as const).map(t => (
-                    <button
-                        key={t}
-                        onClick={() => { setTab(t); setMovieResults([]); setBookResults([]); }}
-                        className={`px-4 py-2 rounded-[4px] text-sm font-medium transition-all cursor-pointer ${tab === t ? 'bg-[var(--accent)] text-[#14181c]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                            }`}
-                    >
-                        {t === 'movies' ? 'Films' : 'Books'}
-                    </button>
-                ))}
-            </div>
-
-            {/* 検索バー */}
-            <div className="flex gap-3">
-                <Input
-                    placeholder={tab === 'movies' ? 'Search movies, anime, TV shows...' : 'Search books...'}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="flex-1"
-                />
-                <Button onClick={handleSearch} isLoading={searching}>Search</Button>
+        <div className="w-full space-y-6">
+            <div className="app-topbar">
+                <div className="app-topbar-controls">
+                    <div className="app-topbar-title">
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Search</h1>
+                    </div>
+                    <div className="app-topbar-controls ml-auto">
+                        <div className="app-pill-group">
+                            {(['movies', 'books'] as const).map(t => (
+                                <button
+                                    key={t}
+                                    onClick={() => { setTab(t); setMovieResults([]); setBookResults([]); }}
+                                    className={`app-pill-btn ${tab === t ? 'is-active' : ''}`}
+                                >
+                                    {t === 'movies' ? 'Films' : 'Books'}
+                                </button>
+                            ))}
+                        </div>
+                        <input
+                            className="app-control-input"
+                            placeholder={tab === 'movies' ? 'Search movies, anime, TV shows...' : 'Search books...'}
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        />
+                        <Button onClick={handleSearch} isLoading={searching} variant="secondary">Search</Button>
+                    </div>
+                </div>
             </div>
 
             {tab === 'books' && searchError && (
@@ -185,25 +186,20 @@ function SearchPage() {
                                 {item.poster_path ? (
                                     <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#556' }}>NO IMAGE</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
                                 )}
-                                {/* Media type badge */}
-                                <div className="absolute top-2 left-2">
-                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ${item.media_type === 'tv'
-                                        ? 'bg-purple-500/80 text-white'
-                                        : 'bg-blue-500/80 text-white'
-                                        }`}>
-                                        {item.media_type === 'tv' ? (
-                                            <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 20h12M9.5 4l2.5 3 2.5-3M4 9h16v7a2 2 0 01-2 2H6a2 2 0 01-2-2V9z" /></svg>TV</>
-                                        ) : (
-                                            <><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>Film</>
-                                        )}
+                            </div>
+                            <div className="p-3 space-y-1">
+                                <div className="flex items-start gap-2">
+                                    <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                    <span
+                                        className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                    >
+                                        {item.media_type === 'tv' ? 'TV' : 'Film'}
                                     </span>
                                 </div>
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                    <p className="text-sm font-medium truncate">{item.title}</p>
-                                    {item.release_date && <p className="text-xs text-white/60">{item.release_date.substring(0, 4)}</p>}
-                                </div>
+                                {item.release_date && <p className="text-xs text-[var(--text-muted)]">{item.release_date.substring(0, 4)}</p>}
                             </div>
                         </Card>
                     ))}
@@ -223,12 +219,12 @@ function SearchPage() {
                                 {book.thumbnail ? (
                                     <img src={book.thumbnail} alt={book.title} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: '#556' }}>NO IMAGE</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
                                 )}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                    <p className="text-sm font-medium truncate">{book.title}</p>
-                                    {book.author && <p className="text-xs text-white/60 truncate">{book.author}</p>}
-                                </div>
+                            </div>
+                            <div className="p-3 space-y-1">
+                                <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{book.title}</p>
+                                {book.author && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{book.author}</p>}
                             </div>
                         </Card>
                     ))}
@@ -244,8 +240,10 @@ function SearchPage() {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <p className="font-medium">{selectedMovie.title}</p>
-                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${selectedMovie.media_type === 'tv' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-                                        }`}>
+                                    <span
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                    >
                                         {selectedMovie.media_type === 'tv' ? 'TV' : 'Film'}
                                     </span>
                                 </div>
@@ -274,7 +272,7 @@ function SearchPage() {
                                         max={selectedMovie.number_of_episodes || 9999}
                                         value={addForm.watchedEpisode || ''}
                                         onChange={e => setAddForm(p => ({ ...p, watchedEpisode: parseInt(e.target.value) || 0 }))}
-                                        className="w-20 px-2 py-1 text-sm rounded-[4px] bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                                        className="w-20 px-2 py-1 text-sm rounded-[4px] bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[#525b69] focus:outline-none"
                                         placeholder="0"
                                     />
                                 </div>

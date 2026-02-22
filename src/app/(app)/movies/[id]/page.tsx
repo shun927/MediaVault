@@ -15,36 +15,74 @@ export default function MovieDetailPage() {
     const params = useParams();
     const router = useRouter();
     const [movie, setMovie] = useState<Movie | null>(null);
-    const [tags, setTags] = useState<Tag[]>([]);
+    const [allTags, setAllTags] = useState<Tag[]>([]);
     const [history, setHistory] = useState<ViewingHistory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [savingMeta, setSavingMeta] = useState(false);
+    const [editMeta, setEditMeta] = useState({
+        rating: 0,
+        status: 'wishlist',
+        selectedTags: [] as string[],
+        numberOfEpisodes: 0,
+        watchedEpisode: 0,
+    });
     const [showHistoryForm, setShowHistoryForm] = useState(false);
     const [historyForm, setHistoryForm] = useState({ date: new Date().toISOString().slice(0, 10), note: '' });
     const [savingHistory, setSavingHistory] = useState(false);
-
-    useEffect(() => {
-        loadMovie();
-    }, [params.id]);
 
     async function loadMovie() {
         const supabase = createClient();
         const { data } = await supabase.from('movies').select('*').eq('id', params.id).single();
         if (!data) { router.push('/movies'); return; }
 
-        const [{ data: movieTags }, { data: historyData }] = await Promise.all([
+        const [{ data: movieTags }, { data: historyData }, { data: allTagData }] = await Promise.all([
             supabase.from('movie_tags').select('tag_id').eq('movie_id', params.id),
             supabase.from('viewing_history').select('*').eq('movie_id', params.id).order('watched_at', { ascending: false }),
+            supabase.from('tags').select('*').order('name'),
         ]);
 
-        if (movieTags && movieTags.length > 0) {
-            const tagIds = movieTags.map(mt => mt.tag_id);
-            const { data: tagData } = await supabase.from('tags').select('*').in('id', tagIds);
-            setTags((tagData as Tag[]) || []);
-        }
+        const selectedTagIds = (movieTags || []).map(mt => mt.tag_id);
+        const availableTags = (allTagData as Tag[]) || [];
+        setAllTags(availableTags);
+        setEditMeta({
+            rating: (data as Movie).rating || 0,
+            status: (data as Movie).status,
+            selectedTags: selectedTagIds,
+            numberOfEpisodes: (data as Movie).number_of_episodes || 0,
+            watchedEpisode: (data as Movie).watched_episode || 0,
+        });
 
         setHistory((historyData as ViewingHistory[]) || []);
         setMovie(data as Movie);
         setLoading(false);
+    }
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadMovie();
+    }, [params.id]);
+
+    async function handleSaveMeta() {
+        if (!movie) return;
+        setSavingMeta(true);
+        const supabase = createClient();
+        await supabase.from('movies').update({
+            rating: editMeta.rating || null,
+            status: editMeta.status,
+            number_of_episodes: movie.media_type === 'tv' ? (editMeta.numberOfEpisodes || null) : null,
+            watched_episode: movie.media_type === 'tv' ? (editMeta.watchedEpisode || null) : null,
+            updated_at: new Date().toISOString(),
+        }).eq('id', movie.id);
+
+        await supabase.from('movie_tags').delete().eq('movie_id', movie.id);
+        if (editMeta.selectedTags.length > 0) {
+            await supabase.from('movie_tags').insert(
+                editMeta.selectedTags.map(tagId => ({ movie_id: movie.id, tag_id: tagId }))
+            );
+        }
+
+        setSavingMeta(false);
+        await loadMovie();
     }
 
     async function handleAddHistory() {
@@ -94,7 +132,7 @@ export default function MovieDetailPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <Link href="/movies" className="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)]">← Back to Films</Link>
+            <Link href="/movies" className="text-base font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]">← Back to Films</Link>
 
             <div className="flex flex-col sm:flex-row gap-6">
                 {/* Poster */}
@@ -105,15 +143,6 @@ export default function MovieDetailPage() {
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-sm font-medium" style={{ color: '#556' }}>NO IMAGE</div>
                         )}
-                        {/* Media type badge */}
-                        <div className="absolute top-2 left-2">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm ${movie.media_type === 'tv'
-                                ? 'bg-purple-500/80 text-white'
-                                : 'bg-blue-500/80 text-white'
-                                }`}>
-                                {movie.media_type === 'tv' ? 'TV' : 'Film'}
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -125,10 +154,77 @@ export default function MovieDetailPage() {
                         {movie.director && <p className="text-sm text-[var(--text-muted)]">Directed by {movie.director}</p>}
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <StarRating value={movie.rating || 0} readonly />
-                        <StatusBadge status={movie.status} />
-                    </div>
+                    <Card hover={false} className="space-y-3">
+                        <div>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
+                            <StarRating value={editMeta.rating} onChange={(v) => setEditMeta(prev => ({ ...prev, rating: v }))} />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Status</label>
+                            <select
+                                value={editMeta.status}
+                                onChange={(e) => setEditMeta(prev => ({ ...prev, status: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm rounded-[8px] bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] focus:border-[var(--input-focus)] focus:outline-none"
+                            >
+                                <option value="watched">Watched</option>
+                                <option value="watching">Watching</option>
+                                <option value="wishlist">Wishlist</option>
+                            </select>
+                        </div>
+                        {movie.media_type === 'tv' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Total Episodes</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={editMeta.numberOfEpisodes || ''}
+                                        onChange={(e) => setEditMeta(prev => ({ ...prev, numberOfEpisodes: parseInt(e.target.value) || 0 }))}
+                                        className="w-full px-3 py-2 text-sm rounded-[8px] bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] focus:border-[var(--input-focus)] focus:outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Watched Episode</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max={editMeta.numberOfEpisodes || undefined}
+                                        value={editMeta.watchedEpisode || ''}
+                                        onChange={(e) => setEditMeta(prev => ({ ...prev, watchedEpisode: parseInt(e.target.value) || 0 }))}
+                                        className="w-full px-3 py-2 text-sm rounded-[8px] bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] focus:border-[var(--input-focus)] focus:outline-none"
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        {allTags.length > 0 && (
+                            <div>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {allTags.map(tag => (
+                                        <button
+                                            key={tag.id}
+                                            type="button"
+                                            onClick={() => setEditMeta(prev => ({
+                                                ...prev,
+                                                selectedTags: prev.selectedTags.includes(tag.id)
+                                                    ? prev.selectedTags.filter(id => id !== tag.id)
+                                                    : [...prev.selectedTags, tag.id],
+                                            }))}
+                                            className={`cursor-pointer rounded-full ${editMeta.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''}`}
+                                        >
+                                            <Badge label={tag.name} color={tag.color} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-3">
+                            <Button onClick={handleSaveMeta} isLoading={savingMeta}>Save Changes</Button>
+                            <StatusBadge status={editMeta.status} />
+                        </div>
+                    </Card>
 
                     {/* TV progress info */}
                     {movie.media_type === 'tv' && (
@@ -171,12 +267,6 @@ export default function MovieDetailPage() {
                                 )}
                             </div>
                         </Card>
-                    )}
-
-                    {tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                            {tags.map(tag => <Badge key={tag.id} label={tag.name} color={tag.color} />)}
-                        </div>
                     )}
 
                     {movie.note && (

@@ -11,12 +11,12 @@ export function Input({ label, error, className = '', ...props }: InputProps) {
     return (
         <div className={`space-y-1.5 ${className}`}>
             {label && (
-                <label className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em]">
+                <label className="block text-[11px] font-medium text-[var(--input-label)] uppercase tracking-[0.12em]">
                     {label}
                 </label>
             )}
             <input
-                className={`w-full px-3 py-2.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-[4px] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] transition-colors ${error ? 'border-red-500' : ''}`}
+                className={`w-full px-3 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-[8px] text-[14px] text-[var(--input-text)] placeholder:text-[var(--input-label)] focus:outline-none focus:border-[var(--input-focus)] transition-colors ${error ? 'border-red-500' : ''}`}
                 {...props}
             />
             {error && <p className="text-xs text-red-400">{error}</p>}
@@ -32,12 +32,12 @@ export function Textarea({ label, className = '', ...props }: TextareaProps) {
     return (
         <div className={`space-y-1.5 ${className}`}>
             {label && (
-                <label className="block text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-[0.1em]">
+                <label className="block text-[11px] font-medium text-[var(--input-label)] uppercase tracking-[0.12em]">
                     {label}
                 </label>
             )}
             <textarea
-                className="w-full px-3 py-2.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-[4px] text-[14px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] transition-colors resize-none min-h-[80px]"
+                className="w-full px-3 py-2.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-[8px] text-[14px] text-[var(--input-text)] placeholder:text-[var(--input-label)] focus:outline-none focus:border-[var(--input-focus)] transition-colors resize-none min-h-[80px]"
                 {...props}
             />
         </div>

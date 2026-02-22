@@ -11,6 +11,12 @@ import { createClient } from '@/lib/supabase';
 import type { Profile, Tag } from '@/lib/types';
 
 const PRESET_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#64748b', '#a855f7'];
+const THEME_OPTIONS = [
+    { key: 'dark', label: 'Dark' },
+    { key: 'monochrome', label: 'Monochrome' },
+    { key: 'cobalt', label: 'Cobalt' },
+] as const;
+type ThemeKey = typeof THEME_OPTIONS[number]['key'];
 
 export default function SettingsPage() {
     const router = useRouter();
@@ -29,12 +35,14 @@ export default function SettingsPage() {
     const [exporting, setExporting] = useState(false);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<string | null>(null);
+    const [theme, setTheme] = useState<ThemeKey>('dark');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        loadProfile();
-        loadTags();
-    }, []);
+    function handleThemeChange(nextTheme: ThemeKey) {
+        setTheme(nextTheme);
+        document.documentElement.setAttribute('data-theme', nextTheme);
+        window.localStorage.setItem('mv-theme', nextTheme);
+    }
 
     async function loadProfile() {
         const supabase = createClient();
@@ -173,12 +181,38 @@ export default function SettingsPage() {
         router.push('/login');
     }
 
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadProfile();
+        loadTags();
+        const currentTheme = (document.documentElement.getAttribute('data-theme') || 'dark') as ThemeKey;
+        setTheme(currentTheme);
+    }, []);
+
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            <h1 className="text-2xl font-bold" style={{ color: '#e1e3e5' }}>Settings</h1>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
 
             <Card hover={false}>
-                <h2 className="text-lg font-semibold mb-4" style={{ color: '#e1e3e5' }}>Profile</h2>
+                <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Theme</h2>
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                    Choose color theme
+                </p>
+                <div className="flex flex-wrap gap-2">
+                    {THEME_OPTIONS.map((option) => (
+                        <Button
+                            key={option.key}
+                            variant={theme === option.key ? 'primary' : 'secondary'}
+                            onClick={() => handleThemeChange(option.key)}
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
+                </div>
+            </Card>
+
+            <Card hover={false}>
+                <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Profile</h2>
                 {profileLoading ? (
                     <div className="space-y-3">
                         <div className="animate-shimmer rounded h-10 w-full" />
@@ -187,7 +221,7 @@ export default function SettingsPage() {
                 ) : (
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--border)] shrink-0" style={{ background: '#242c34' }}>
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--border)] shrink-0" style={{ background: 'var(--bg-tertiary)' }}>
                                 {profileForm.avatar_url ? (
                                     <img src={profileForm.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                                 ) : (
@@ -197,7 +231,7 @@ export default function SettingsPage() {
                                 )}
                             </div>
                             <div>
-                                <p className="text-sm font-medium" style={{ color: '#e1e3e5' }}>{profileForm.display_name || 'No name set'}</p>
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{profileForm.display_name || 'No name set'}</p>
                                 <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                     {stats.movies} films · {stats.books} books · {stats.tags} tags
                                 </p>
@@ -236,7 +270,7 @@ export default function SettingsPage() {
             <Card hover={false}>
                 <div className="flex items-center justify-between mb-4 gap-3">
                     <div>
-                        <h2 className="text-lg font-semibold" style={{ color: '#e1e3e5' }}>Tag Management</h2>
+                        <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Tag Management</h2>
                         <p className="text-sm text-[var(--text-muted)] mt-1">Create, edit, and delete tags from Settings</p>
                     </div>
                     <Button onClick={() => { setShowCreateTag(true); setTagForm({ name: '', color: '#6366f1' }); }}>+ Create Tag</Button>
@@ -271,7 +305,7 @@ export default function SettingsPage() {
             </Card>
 
             <Card hover={false}>
-                <h2 className="text-lg font-semibold mb-2" style={{ color: '#e1e3e5' }}>Data Export</h2>
+                <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Data Export</h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
                     Export all your records as a JSON file
                 </p>
@@ -284,7 +318,7 @@ export default function SettingsPage() {
             </Card>
 
             <Card hover={false}>
-                <h2 className="text-lg font-semibold mb-2" style={{ color: '#e1e3e5' }}>Data Import</h2>
+                <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Data Import</h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
                     Restore your data from an exported JSON file
                 </p>
@@ -313,7 +347,7 @@ export default function SettingsPage() {
             </Card>
 
             <Card hover={false}>
-                <h2 className="text-lg font-semibold mb-2" style={{ color: '#e1e3e5' }}>Account</h2>
+                <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Account</h2>
                 <Button onClick={handleLogout} variant="danger">
                     Logout
                 </Button>

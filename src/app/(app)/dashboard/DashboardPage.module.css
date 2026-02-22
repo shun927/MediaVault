@@ -1,0 +1,249 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&display=swap');
+
+.root {
+  background: var(--shell-bg);
+  border: 1px solid var(--shell-border);
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  overflow: hidden;
+  min-height: 100vh;
+}
+
+.toolbar {
+  border-bottom: 1px solid var(--shell-border);
+  padding: 18px 36px;
+  min-height: 122px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+}
+
+.topStat {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 160px;
+}
+
+.topStatValue {
+  font-family: 'Archivo', sans-serif;
+  color: var(--text-primary);
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.topStatLabel {
+  margin-top: 2px;
+  font-family: 'Archivo', sans-serif;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.filterTabs {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.filterBtn {
+  font-family: 'Archivo', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--control-muted);
+  background: var(--control-bg);
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 10px 16px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+}
+
+.filterTabs .filterBtn:last-child {
+  border-right: 0;
+}
+
+.filterBtnActive {
+  background: var(--control-active-bg);
+  color: var(--control-active-text);
+}
+
+.searchInput {
+  width: 420px;
+  border: 1px solid var(--border);
+  background: var(--control-bg);
+  color: var(--control-text);
+  padding: 10px 14px;
+  border-radius: 999px;
+  outline: none;
+  font-family: 'Archivo', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.searchInput::placeholder {
+  color: var(--control-muted);
+}
+
+.iconBtn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--control-text);
+  background: var(--control-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.content {
+  padding: 18px 36px 30px;
+  display: grid;
+  gap: 22px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.card {
+  text-decoration: none;
+}
+
+.posterWrap {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: none;
+}
+
+.noImage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-family: 'Archivo', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.cardMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.18;
+}
+
+.dateChip {
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+  font-family: 'Archivo', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  height: fit-content;
+}
+
+.rating {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.empty {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: 'Archivo', sans-serif;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .toolbar {
+    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 18px;
+  }
+
+  .controls {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .searchInput {
+    width: 100%;
+    min-width: 200px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .root {
+    min-height: auto;
+    border-radius: 10px;
+  }
+
+  .toolbar {
+    padding: 10px 16px;
+  }
+
+  .content {
+    padding: 10px 16px 16px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

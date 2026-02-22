@@ -9,13 +9,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export default function Button({ children, variant = 'primary', isLoading, className = '', disabled, ...props }: ButtonProps) {
-    const base = 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[4px] text-sm font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer';
+    const base = 'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[8px] text-sm font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer';
 
     const variants = {
-        primary: 'bg-[var(--accent)] text-[#14181c] hover:bg-[var(--accent-hover)] active:scale-[0.97]',
-        secondary: 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:text-[var(--text-primary)] hover:border-[var(--border-hover)]',
-        ghost: 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]',
-        danger: 'bg-transparent text-[var(--danger)] border border-[var(--danger)]/30 hover:bg-[var(--danger)]/10',
+        primary: 'bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] border border-[var(--btn-primary-border)] hover:bg-[var(--btn-primary-hover)] active:scale-[0.97]',
+        secondary: 'bg-[var(--btn-secondary-bg)] text-[var(--btn-secondary-text)] border border-[var(--btn-secondary-border)] hover:text-[var(--btn-secondary-hover-text)] hover:border-[var(--btn-secondary-hover-border)]',
+        ghost: 'text-[var(--btn-ghost-text)] hover:text-[var(--btn-ghost-hover-text)] hover:bg-[var(--btn-ghost-hover-bg)]',
+        danger: 'bg-transparent text-[#e58f92] border border-[#7f3e44] hover:bg-[#5b282d]/40',
     };
 
     return (

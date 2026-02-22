@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import Link from 'next/link';
 import StarRating from '@/components/ui/StarRating';
+import Card from '@/components/ui/Card';
 
 interface TimelineEntry {
     id: string;
@@ -21,9 +22,6 @@ export default function TimelinePage() {
     const [entries, setEntries] = useState<TimelineEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState<'all' | 'movie' | 'book'>('all');
-    const scrollRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => { loadTimeline(); }, []);
 
     async function loadTimeline() {
         const supabase = createClient();
@@ -63,6 +61,11 @@ export default function TimelinePage() {
         setLoading(false);
     }
 
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadTimeline();
+    }, []);
+
     const filtered = filterType === 'all' ? entries : entries.filter(e => e.type === filterType);
 
     // Group by month
@@ -77,114 +80,87 @@ export default function TimelinePage() {
     const months = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold" style={{ color: '#e1e3e5' }}>Timeline</h1>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">Your culture history — {entries.length} entries</p>
-                </div>
-                <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                    {(['all', 'movie', 'book'] as const).map(t => (
-                        <button
-                            key={t}
-                            onClick={() => setFilterType(t)}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-[4px] transition-all cursor-pointer ${filterType === t
-                                    ? 'bg-[var(--accent)] text-[#14181c]'
-                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                                }`}
-                        >
-                            {t === 'all' ? 'All' : t === 'movie' ? 'Films' : 'Books'}
-                        </button>
-                    ))}
+        <div className="max-w-6xl mx-auto space-y-6">
+            <div className="app-topbar">
+                <div className="app-topbar-main">
+                    <div>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Timeline</h1>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">Your culture history — {entries.length} entries</p>
+                    </div>
+                    <div className="app-pill-group">
+                        {(['all', 'movie', 'book'] as const).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => setFilterType(t)}
+                                className={`app-pill-btn ${filterType === t ? 'is-active' : ''}`}
+                            >
+                                {t === 'all' ? 'All' : t === 'movie' ? 'Films' : 'Books'}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             {loading ? (
-                <div className="flex gap-6 overflow-hidden">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="animate-shimmer rounded-xl h-64 w-48 shrink-0" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {[...Array(10)].map((_, i) => (
+                        <div key={i} className="animate-shimmer rounded-[8px] aspect-[2/3]" />
                     ))}
                 </div>
             ) : entries.length === 0 ? (
-                <div className="py-16 text-center" style={{ border: '1px dashed #2c3440', borderRadius: '8px' }}>
-                    <p className="text-lg font-medium mb-2" style={{ color: '#556' }}>No Timeline Data</p>
-                    <p className="text-sm text-[var(--text-muted)]">
-                        Add films or books to your collection to see your timeline
-                    </p>
-                </div>
+                <Card hover={false}>
+                    <div className="py-14 text-center">
+                        <p className="text-lg font-medium mb-2" style={{ color: '#7c8591' }}>No Timeline Data</p>
+                        <p className="text-sm text-[var(--text-muted)]">Add films or books to your collection to see your timeline</p>
+                    </div>
+                </Card>
             ) : (
-                /* Horizontal scrolling timeline */
-                <div className="relative">
-                    {/* Horizontal line */}
-                    <div className="absolute top-[18px] left-0 right-0 h-px" style={{ background: '#2c3440' }} />
-
-                    <div
-                        ref={scrollRef}
-                        className="flex gap-0 overflow-x-auto pb-4 scrollbar-thin"
-                        style={{ scrollbarColor: '#2c3440 transparent' }}
-                    >
-                        {months.map(monthKey => {
-                            const d = new Date(monthKey + '-01');
-                            const label = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-                            return (
-                                <div key={monthKey} className="shrink-0 pr-2">
-                                    {/* Month marker */}
-                                    <div className="flex items-center gap-2 mb-4 relative">
-                                        <div className="w-3 h-3 rounded-full border-2 z-10 shrink-0" style={{ borderColor: '#00e054', background: '#14181c' }} />
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: '#9ab' }}>
-                                            {label}
-                                        </span>
-                                    </div>
-
-                                    {/* Cards in this month */}
-                                    <div className="flex gap-2 ml-1.5">
-                                        {grouped[monthKey].map(entry => (
+                <div className="space-y-8">
+                    {months.map((monthKey) => {
+                        const d = new Date(monthKey + '-01');
+                        const label = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }).toUpperCase();
+                        return (
+                            <section key={monthKey} className="space-y-3">
+                                <div className="flex items-center gap-2 pb-2 border-b border-[#2f343d]">
+                                    <span className="w-2.5 h-2.5 rounded-full border border-[#5b626d] bg-transparent" />
+                                    <span className="text-[13px] font-semibold tracking-[0.08em]" style={{ color: '#9ea5af' }}>{label}</span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {grouped[monthKey].map(entry => (
+                                        <Card key={entry.id} className="p-0 overflow-hidden group relative">
                                             <Link
-                                                key={entry.id}
                                                 href={entry.type === 'movie' ? `/movies/${entry.id}` : `/books/${entry.id}`}
-                                                className="group no-underline shrink-0 w-[120px]"
+                                                className="no-underline"
                                             >
-                                                {/* Poster */}
-                                                <div className="w-[120px] aspect-[2/3] rounded-lg overflow-hidden border border-transparent group-hover:border-[var(--accent)] transition-all relative" style={{ background: '#242c34' }}>
+                                                <div className="aspect-[2/3] bg-[var(--bg-tertiary)] relative">
                                                     {entry.image_url ? (
-                                                        <img src={entry.image_url} alt={entry.title} className="w-full h-full object-cover" />
+                                                        <img src={entry.image_url} alt={entry.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-xs font-medium" style={{ color: '#556' }}>NO IMAGE</div>
                                                     )}
-                                                    {/* Gradient overlay at bottom */}
-                                                    <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
-                                                    {/* Type badge */}
-                                                    <div className="absolute bottom-1.5 left-1.5">
-                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase backdrop-blur-sm ${entry.type === 'movie'
-                                                                ? (entry.media_type === 'tv' ? 'bg-purple-500/80 text-white' : 'bg-blue-500/80 text-white')
-                                                                : 'bg-emerald-500/80 text-white'
-                                                            }`}>
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                                    <div className="absolute top-2 left-2">
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-black/65 text-[#dfe4ea] border border-white/10">
                                                             {entry.type === 'movie' ? (entry.media_type === 'tv' ? 'TV' : 'Film') : 'Book'}
                                                         </span>
                                                     </div>
-                                                    {/* Rating */}
-                                                    {entry.rating != null && entry.rating > 0 && (
-                                                        <div className="absolute bottom-1.5 right-1.5">
-                                                            <span className="text-[10px] font-bold text-yellow-400/90">{'★'.repeat(entry.rating)}</span>
+                                                    <div className="absolute bottom-2 left-2 right-2">
+                                                        <p className="text-sm font-medium truncate text-white">{entry.title}</p>
+                                                        <p className="text-xs text-[#a8b0ba]">
+                                                            {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        </p>
+                                                        <div className="mt-1">
+                                                            <StarRating value={entry.rating || 0} readonly size="sm" />
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
-
-                                                {/* Title */}
-                                                <p className="text-[11px] mt-1.5 leading-tight line-clamp-2 text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors">
-                                                    {entry.title}
-                                                </p>
-                                                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                                                    {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                </p>
                                             </Link>
-                                        ))}
-                                    </div>
+                                        </Card>
+                                    ))}
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </section>
+                        );
+                    })}
                 </div>
             )}
         </div>
