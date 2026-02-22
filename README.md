@@ -123,6 +123,20 @@ UI が確定次第、ここに画像を追加します。
 
 `BookSearchResult` 型に合わせてレスポンスを返せば、フロントエンド側のコード変更は不要です。
 
+### 楽天Books API メモ（OpenAPI）
+
+このプロジェクトの楽天連携は `openapi.rakuten.co.jp` を利用しています。
+
+- 必須環境変数: `RAKUTEN_APP_ID`, `RAKUTEN_ACCESS_KEY`
+- 推奨環境変数（デプロイ時）: `RAKUTEN_ALLOWED_ORIGIN`, `RAKUTEN_ALLOWED_REFERRER`
+- 楽天管理画面の「許可されたWebサイト」は、実際にアクセスするドメインを登録してください（例: `media-vault-rose.vercel.app`）
+- `localhost` で実行時に `Authentication service error` が出る場合は、`.env.local` に以下を設定すると動作確認できます:
+
+```env
+RAKUTEN_ALLOWED_ORIGIN=https://media-vault-rose.vercel.app
+RAKUTEN_ALLOWED_REFERRER=https://media-vault-rose.vercel.app/
+```
+
 ```ts
 // src/lib/types.ts
 export interface BookSearchResult {
