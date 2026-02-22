@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 楽天ブックス書籍検索 API (新プラットフォーム openapi.rakuten.co.jp)
+// 楽天ブックス書籍検索 API (RWS: app.rakuten.co.jp)
 // Docs: https://webservice.rakuten.co.jp/documentation/books-book-search
-const RAKUTEN_ENDPOINT = 'https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404';
+const RAKUTEN_ENDPOINT = 'https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404';
 
 interface RakutenItem {
     title: string;
@@ -24,35 +24,28 @@ export async function GET(request: NextRequest) {
     if (!query) return NextResponse.json({ items: [] });
 
     const appId = process.env.RAKUTEN_APP_ID;
-    const accessKey = process.env.RAKUTEN_ACCESS_KEY;
-    if (!appId || !accessKey) {
-        return NextResponse.json({ items: [], error: 'Rakuten credentials not configured' });
+    if (!appId) {
+        return NextResponse.json({ items: [], error: 'RAKUTEN_APP_ID is not configured' });
+    }
+
+    // RWS applicationId is numeric-like. UUID/pk_* keys are for another platform.
+    if (appId.includes('-')) {
+        return NextResponse.json({
+            items: [],
+            error: 'Invalid RAKUTEN_APP_ID format. Use Rakuten RWS applicationId (not UUID/pk_* keys).',
+        }, { status: 400 });
     }
 
     try {
         const params = new URLSearchParams({
             applicationId: appId,
-            accessKey,
             title: query,
             hits: '20',
             outOfStockFlag: '1',
             format: 'json',
         });
 
-        const refererHeader =
-            process.env.RAKUTEN_ALLOWED_REFERRER ||
-            request.headers.get('origin') ||
-            request.headers.get('referer') ||
-            'http://localhost:3000/';
-
-        const res = await fetch(`${RAKUTEN_ENDPOINT}?${params}`, {
-            cache: 'no-store',
-            referrer: refererHeader,
-            referrerPolicy: 'no-referrer-when-downgrade',
-            headers: {
-                Referer: refererHeader,
-            },
-        });
+        const res = await fetch(`${RAKUTEN_ENDPOINT}?${params}`, { cache: 'no-store' });
         const data = await res.json();
 
         if (!res.ok) {
