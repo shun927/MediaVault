@@ -3,12 +3,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const hasOAuthCode = request.nextUrl.searchParams.has('code');
 
     // Skip middleware for static files, API routes, and auth callback
     if (
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api') ||
         pathname.startsWith('/auth') ||
+        (pathname === '/' && hasOAuthCode) ||
         pathname === '/favicon.ico' ||
         pathname === '/sw.js' ||
         pathname === '/manifest.json'

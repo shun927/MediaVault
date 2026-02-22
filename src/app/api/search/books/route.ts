@@ -40,12 +40,15 @@ export async function GET(request: NextRequest) {
         });
 
         const refererHeader =
+            process.env.RAKUTEN_ALLOWED_REFERRER ||
             request.headers.get('origin') ||
             request.headers.get('referer') ||
             'http://localhost:3000/';
 
         const res = await fetch(`${RAKUTEN_ENDPOINT}?${params}`, {
             cache: 'no-store',
+            referrer: refererHeader,
+            referrerPolicy: 'no-referrer-when-downgrade',
             headers: {
                 Referer: refererHeader,
             },
