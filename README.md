@@ -58,7 +58,7 @@ npm run dev
 - Node.js 18 以上
 - Supabase アカウント
 - TMDB API キー
-- 楽天ウェブサービス アプリ ID（[こちら](https://webservice.rakuten.co.jp/)で取得）
+- 楽天ウェブサービス アプリ ID / アクセスキー（[こちら](https://webservice.rakuten.co.jp/)で取得）
 
 ### 環境変数
 
@@ -69,6 +69,10 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 TMDB_API_KEY=your_tmdb_api_key
 RAKUTEN_APP_ID=your_rakuten_app_id
+RAKUTEN_ACCESS_KEY=your_rakuten_access_key
+# Optional (for deployed environments)
+# RAKUTEN_ALLOWED_ORIGIN=https://your-app-domain.vercel.app
+# RAKUTEN_ALLOWED_REFERRER=https://your-app-domain.vercel.app/
 ```
 
 ### Supabase / OAuth 設定
