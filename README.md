@@ -51,9 +51,9 @@ UI が確定次第、ここに画像を追加します。
 
 DB マイグレーションは、Supabase SQL Editor で以下の順番で実行します。
 
-1. `supabase/migration.sql`（ベーススキーマ）
-2. `supabase_tv_migration.sql`（TV/episode 拡張）
-3. `supabase_music_migration.sql`（music/listening_history 拡張）
+1. `supabase/migrations/001_base.sql`（base schema）
+2. `supabase/migrations/002_tv.sql`（TV/episode extension）
+3. `supabase/migrations/003_music.sql`（music/listening_history extension）
 
 注意:
 - すべて冪等（`IF NOT EXISTS` ベース）なので、再実行しても壊れない前提です。

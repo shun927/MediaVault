@@ -1,8 +1,8 @@
 -- ============================================================
--- MediaVault Phase 1 — Supabase Migration
+-- MediaVault Phase 1 - Supabase Migration
 -- ============================================================
 
--- 1. profiles テーブル
+-- 1. profiles table
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   display_name text,
@@ -22,7 +22,7 @@ create policy "Users can update own profile"
 create policy "Users can insert own profile"
   on public.profiles for insert with check (auth.uid() = id);
 
--- auth.users の新規作成時に profiles を自動作成するトリガー
+-- Trigger to auto-create profile when auth.users is created
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -40,7 +40,7 @@ create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- 2. tags テーブル
+-- 2. tags table
 create table if not exists public.tags (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
@@ -56,7 +56,7 @@ create policy "Users can manage own tags"
 
 create unique index tags_user_name_idx on public.tags (user_id, name);
 
--- 3. movies テーブル
+-- 3. movies table
 create table if not exists public.movies (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
@@ -79,7 +79,7 @@ alter table public.movies enable row level security;
 create policy "Users can manage own movies"
   on public.movies for all using (auth.uid() = user_id);
 
--- 4. books テーブル
+-- 4. books table
 create table if not exists public.books (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
@@ -102,7 +102,7 @@ alter table public.books enable row level security;
 create policy "Users can manage own books"
   on public.books for all using (auth.uid() = user_id);
 
--- 5. music テーブル（Phase 2 向け先行定義）
+-- 5. music table (predefined for phase 2)
 create table if not exists public.music (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
@@ -125,7 +125,7 @@ alter table public.music enable row level security;
 create policy "Users can manage own music"
   on public.music for all using (auth.uid() = user_id);
 
--- 6. movie_tags 中間テーブル
+-- 6. movie_tags join table
 create table if not exists public.movie_tags (
   movie_id uuid references public.movies on delete cascade not null,
   tag_id uuid references public.tags on delete cascade not null,
@@ -140,7 +140,7 @@ create policy "Users can manage own movie_tags"
     exists (select 1 from public.movies where id = movie_id and user_id = auth.uid())
   );
 
--- 7. book_tags 中間テーブル
+-- 7. book_tags join table
 create table if not exists public.book_tags (
   book_id uuid references public.books on delete cascade not null,
   tag_id uuid references public.tags on delete cascade not null,
@@ -155,7 +155,7 @@ create policy "Users can manage own book_tags"
     exists (select 1 from public.books where id = book_id and user_id = auth.uid())
   );
 
--- 8. viewing_history（再鑑賞ログ）
+-- 8. viewing_history
 create table if not exists public.viewing_history (
   id uuid default gen_random_uuid() primary key,
   movie_id uuid references public.movies on delete cascade not null,
@@ -169,7 +169,7 @@ alter table public.viewing_history enable row level security;
 create policy "Users can manage own viewing_history"
   on public.viewing_history for all using (auth.uid() = user_id);
 
--- 9. reading_history（再読ログ）
+-- 9. reading_history
 create table if not exists public.reading_history (
   id uuid default gen_random_uuid() primary key,
   book_id uuid references public.books on delete cascade not null,

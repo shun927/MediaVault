@@ -60,9 +60,9 @@ npm run start  # 本番サーバー起動
 
 Supabase SQL Editor で、以下をこの順番で実行します。
 
-1. `supabase/migration.sql`（ベース）
-2. `supabase_tv_migration.sql`（TV拡張）
-3. `supabase_music_migration.sql`（Music拡張）
+1. `supabase/migrations/001_base.sql`（ベース）
+2. `supabase/migrations/002_tv.sql`（TV拡張）
+3. `supabase/migrations/003_music.sql`（Music拡張）
 
 運用ルール:
 - すべて冪等（`IF NOT EXISTS`）前提のため、再実行可能です。
