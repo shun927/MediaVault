@@ -80,6 +80,7 @@ export interface Music {
     listened_at: string | null;
     created_at: string;
     updated_at: string;
+    tags?: Tag[];
 }
 
 export interface ViewingHistory {
@@ -125,5 +126,25 @@ export interface BookSearchResult {
     publisher: string | null;
 }
 
+export interface ListeningHistory {
+    id: string;
+    music_id: string;
+    user_id: string;
+    listened_at: string;
+    note: string | null;
+}
+
 // 後方互換エイリアス
 export type GoogleBook = BookSearchResult;
+
+// Spotify 検索結果（正規化済み）
+export interface SpotifySearchResult {
+    id: string;
+    type: 'track' | 'album';
+    title: string;
+    artist: string | null;
+    albumName: string | null;
+    releaseDate: string | null;
+    image: string | null;
+    spotifyUrl: string | null;
+}

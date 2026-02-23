@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
+import { Textarea } from '@/components/ui/Input';
 import { createClient } from '@/lib/supabase';
 import type { Movie, Tag, ViewingHistory } from '@/lib/types';
+import { MOVIE_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
 
 export default function MovieDetailPage() {
@@ -22,6 +25,7 @@ export default function MovieDetailPage() {
     const [editMeta, setEditMeta] = useState({
         rating: 0,
         status: 'wishlist',
+        note: '',
         selectedTags: [] as string[],
         numberOfEpisodes: 0,
         watchedEpisode: 0,
@@ -30,7 +34,7 @@ export default function MovieDetailPage() {
     const [historyForm, setHistoryForm] = useState({ date: new Date().toISOString().slice(0, 10), note: '' });
     const [savingHistory, setSavingHistory] = useState(false);
 
-    async function loadMovie() {
+    const loadMovie = useCallback(async () => {
         const supabase = createClient();
         const { data } = await supabase.from('movies').select('*').eq('id', params.id).single();
         if (!data) { router.push('/movies'); return; }
@@ -47,6 +51,7 @@ export default function MovieDetailPage() {
         setEditMeta({
             rating: (data as Movie).rating || 0,
             status: (data as Movie).status,
+            note: (data as Movie).note || '',
             selectedTags: selectedTagIds,
             numberOfEpisodes: (data as Movie).number_of_episodes || 0,
             watchedEpisode: (data as Movie).watched_episode || 0,
@@ -55,20 +60,23 @@ export default function MovieDetailPage() {
         setHistory((historyData as ViewingHistory[]) || []);
         setMovie(data as Movie);
         setLoading(false);
-    }
+    }, [params.id, router]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadMovie();
-    }, [params.id]);
+        void loadMovie();
+    }, [loadMovie]);
 
     async function handleSaveMeta() {
         if (!movie) return;
         setSavingMeta(true);
         const supabase = createClient();
+        const movingToWatched = movie.status !== 'watched' && editMeta.status === 'watched';
         await supabase.from('movies').update({
             rating: editMeta.rating || null,
             status: editMeta.status,
+            note: editMeta.note.trim() || null,
+            watched_at: editMeta.status === 'watched' ? new Date().toISOString() : movie.watched_at,
             number_of_episodes: movie.media_type === 'tv' ? (editMeta.numberOfEpisodes || null) : null,
             watched_episode: movie.media_type === 'tv' ? (editMeta.watchedEpisode || null) : null,
             updated_at: new Date().toISOString(),
@@ -81,6 +89,29 @@ export default function MovieDetailPage() {
             );
         }
 
+        if (movingToWatched) {
+            const today = new Date().toISOString().slice(0, 10);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: existingToday } = await supabase
+                    .from('viewing_history')
+                    .select('id, watched_at')
+                    .eq('movie_id', movie.id)
+                    .gte('watched_at', `${today}T00:00:00.000Z`)
+                    .lt('watched_at', `${today}T23:59:59.999Z`)
+                    .limit(1);
+
+                if (!existingToday || existingToday.length === 0) {
+                    await supabase.from('viewing_history').insert({
+                        movie_id: movie.id,
+                        user_id: user.id,
+                        watched_at: new Date().toISOString(),
+                        note: null,
+                    });
+                }
+            }
+        }
+
         setSavingMeta(false);
         await loadMovie();
     }
@@ -90,7 +121,10 @@ export default function MovieDetailPage() {
         setSavingHistory(true);
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+            setSavingHistory(false);
+            return;
+        }
 
         await supabase.from('viewing_history').insert({
             movie_id: movie.id,
@@ -102,13 +136,13 @@ export default function MovieDetailPage() {
         setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
         setShowHistoryForm(false);
         setSavingHistory(false);
-        loadMovie();
+        await loadMovie();
     }
 
     async function handleDeleteHistory(historyId: string) {
         const supabase = createClient();
         await supabase.from('viewing_history').delete().eq('id', historyId);
-        loadMovie();
+        await loadMovie();
     }
 
     async function handleDelete() {
@@ -131,29 +165,37 @@ export default function MovieDetailPage() {
     if (!movie) return null;
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <Link href="/movies" className="text-base font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]">← Back to Films</Link>
+        <div className="detail-page-shell">
+            <div className="detail-page-header">
+                <div className="detail-page-back-slot">
+                    <Link
+                        href="/movies"
+                        className="detail-page-back-link"
+                    >
+                        ← Back to Films
+                    </Link>
+                </div>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold">{movie.title}</h1>
+                    {movie.year && <p className="text-[var(--text-muted)] mt-1">{movie.year}</p>}
+                    {movie.director && <p className="text-sm text-[var(--text-muted)]">Directed by {movie.director}</p>}
+                </div>
+            </div>
 
-            <div className="flex flex-col sm:flex-row gap-6">
+            <div className="detail-page-media-row">
                 {/* Poster */}
-                <div className="w-full sm:w-56 shrink-0">
-                    <div className="aspect-[2/3] bg-[var(--bg-secondary)] rounded-lg overflow-hidden border border-[var(--border)] relative">
+                <div className="detail-page-poster-wrap">
+                    <div className="detail-page-poster-box aspect-[2/3] relative">
                         {movie.poster_url ? (
-                            <img src={movie.poster_url} alt={movie.title} className="w-full h-full object-cover" />
+                            <Image src={movie.poster_url} alt={movie.title} fill sizes="(max-width: 640px) 100vw, 224px" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm font-medium" style={{ color: '#556' }}>NO IMAGE</div>
+                            <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--text-muted)]">NO IMAGE</div>
                         )}
                     </div>
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 space-y-4">
-                    <div>
-                        <h1 className="text-2xl font-bold">{movie.title}</h1>
-                        {movie.year && <p className="text-[var(--text-muted)] mt-1">{movie.year}</p>}
-                        {movie.director && <p className="text-sm text-[var(--text-muted)]">Directed by {movie.director}</p>}
-                    </div>
-
                     <Card hover={false} className="space-y-3">
                         <div>
                             <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
@@ -166,9 +208,9 @@ export default function MovieDetailPage() {
                                 onChange={(e) => setEditMeta(prev => ({ ...prev, status: e.target.value }))}
                                 className="w-full px-3 py-2 text-sm rounded-[8px] bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--input-text)] focus:border-[var(--input-focus)] focus:outline-none"
                             >
-                                <option value="watched">Watched</option>
-                                <option value="watching">Watching</option>
-                                <option value="wishlist">Wishlist</option>
+                                {MOVIE_STATUS_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
                             </select>
                         </div>
                         {movie.media_type === 'tv' && (
@@ -220,6 +262,12 @@ export default function MovieDetailPage() {
                                 </div>
                             </div>
                         )}
+                        <Textarea
+                            label="Comment"
+                            placeholder="Write your thoughts..."
+                            value={editMeta.note}
+                            onChange={(e) => setEditMeta(prev => ({ ...prev, note: e.target.value }))}
+                        />
                         <div className="flex items-center gap-3">
                             <Button onClick={handleSaveMeta} isLoading={savingMeta}>Save Changes</Button>
                             <StatusBadge status={editMeta.status} />
@@ -269,13 +317,6 @@ export default function MovieDetailPage() {
                         </Card>
                     )}
 
-                    {movie.note && (
-                        <Card hover={false}>
-                            <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Notes</h3>
-                            <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{movie.note}</p>
-                        </Card>
-                    )}
-
                     {movie.overview && (
                         <div>
                             <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Overview</h3>
@@ -292,8 +333,7 @@ export default function MovieDetailPage() {
                             </h3>
                             <button
                                 onClick={() => setShowHistoryForm(!showHistoryForm)}
-                                className="text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
-                                style={{ color: '#00e054', border: '1px solid rgba(0,224,84,0.3)' }}
+                                className="detail-page-history-trigger text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
                             >
                                 + Log Rewatch
                             </button>

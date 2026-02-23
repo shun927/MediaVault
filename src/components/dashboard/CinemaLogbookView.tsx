@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import type { Movie } from '@/lib/types';
@@ -117,7 +118,13 @@ export default function CinemaLogbookView() {
                             <Link key={item.id} href={`/movies/${item.id}`} className={styles.mediaCard}>
                                 <div className={styles.cardImageWrap}>
                                     {index === 0 && <div className={styles.sticker}>NEW</div>}
-                                    <img src={item.poster_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=600&fit=crop'} className={styles.cardImage} alt={item.title} />
+                                    <Image
+                                        src={item.poster_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=600&fit=crop'}
+                                        className={styles.cardImage}
+                                        alt={item.title}
+                                        fill
+                                        sizes="(max-width: 980px) 50vw, 20vw"
+                                    />
                                 </div>
                                 <div>
                                     <div className={styles.cardMeta}>

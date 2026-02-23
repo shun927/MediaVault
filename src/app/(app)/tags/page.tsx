@@ -28,11 +28,12 @@ export default function TagsPage() {
         // 各タグの使用数を取得
         const counts: Record<string, number> = {};
         for (const tag of tagList) {
-            const [{ count: mc }, { count: bc }] = await Promise.all([
+            const [{ count: mc }, { count: bc }, { count: muc }] = await Promise.all([
                 supabase.from('movie_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
                 supabase.from('book_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
+                supabase.from('music_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
             ]);
-            counts[tag.id] = (mc || 0) + (bc || 0);
+            counts[tag.id] = (mc || 0) + (bc || 0) + (muc || 0);
         }
         setTagCounts(counts);
         setLoading(false);

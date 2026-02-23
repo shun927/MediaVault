@@ -42,12 +42,25 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // 音楽のインポート
+        if (importData.music?.length) {
+            for (const item of importData.music) {
+                await supabase.from('music').upsert({
+                    ...item,
+                    user_id: user.id,
+                }, { onConflict: 'id' });
+            }
+        }
+
         // 中間テーブル
         if (importData.movie_tags?.length) {
             await supabase.from('movie_tags').upsert(importData.movie_tags, { onConflict: 'movie_id,tag_id' });
         }
         if (importData.book_tags?.length) {
             await supabase.from('book_tags').upsert(importData.book_tags, { onConflict: 'book_id,tag_id' });
+        }
+        if (importData.music_tags?.length) {
+            await supabase.from('music_tags').upsert(importData.music_tags, { onConflict: 'music_id,tag_id' });
         }
 
         // 履歴
@@ -59,6 +72,11 @@ export async function POST(request: NextRequest) {
         if (importData.reading_history?.length) {
             for (const h of importData.reading_history) {
                 await supabase.from('reading_history').upsert({ ...h, user_id: user.id }, { onConflict: 'id' });
+            }
+        }
+        if (importData.listening_history?.length) {
+            for (const h of importData.listening_history) {
+                await supabase.from('listening_history').upsert({ ...h, user_id: user.id }, { onConflict: 'id' });
             }
         }
 

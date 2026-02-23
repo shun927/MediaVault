@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
@@ -8,6 +9,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { createClient } from '@/lib/supabase';
 import type { Book, Tag } from '@/lib/types';
+import { BOOK_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
 
 export default function BooksPage() {
@@ -61,7 +63,7 @@ export default function BooksPage() {
     }, [loadBooks]);
 
     return (
-        <div className="w-full space-y-6">
+        <div className="w-full">
             <div className="app-topbar">
                 <div className="app-topbar-controls">
                     <div className="app-topbar-title">
@@ -71,15 +73,15 @@ export default function BooksPage() {
                     <div className="app-topbar-controls ml-auto">
                         <input
                             className="app-control-input"
-                            placeholder="タイトルで検索..."
+                            placeholder="Search titles..."
                             value={filter.search}
                             onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
                         />
                         <select className="app-control-select" value={filter.status} onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value }))}>
                             <option value="">All</option>
-                            <option value="read">Read</option>
-                            <option value="reading">Reading</option>
-                            <option value="wishlist">Wishlist</option>
+                            {BOOK_STATUS_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
                         </select>
                         <select className="app-control-select" value={sort} onChange={(e) => setSort(e.target.value)}>
                             <option value="created_at">Recent</option>
@@ -93,53 +95,61 @@ export default function BooksPage() {
                 </div>
             </div>
 
-            {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {[...Array(10)].map((_, i) => (
-                        <div key={i} className="animate-shimmer rounded aspect-[2/3]" />
-                    ))}
-                </div>
-            ) : books.length === 0 ? (
-                <Card hover={false}>
-                    <div className="text-center py-12 text-[var(--text-muted)]">
-                        <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>No Books</p>
-                        <Link href="/search?tab=books" className="text-sm text-[var(--accent)] hover:underline mt-2 inline-block">
-                            Search and add books →
-                        </Link>
+            <div className="max-w-6xl mx-auto px-4 lg:px-9 pt-5 pb-8">
+                {loading ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {[...Array(10)].map((_, i) => (
+                            <div key={i} className="animate-shimmer rounded aspect-[2/3]" />
+                        ))}
                     </div>
-                </Card>
-            ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {books.map((book) => (
-                        <Card key={book.id} className="p-0 overflow-hidden group relative">
-                            <Link href={`/books/${book.id}`}>
-                                <div className="aspect-[2/3] bg-[var(--bg-tertiary)] relative">
-                                    {book.cover_url ? (
-                                        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
-                                    )}
-                                </div>
-                                <div className="p-3 space-y-1.5">
-                                    <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{book.title}</p>
-                                    {book.author && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{book.author}</p>}
-                                    <div className="flex items-center gap-2">
-                                        <StarRating value={book.rating || 0} readonly size="sm" />
-                                    </div>
-                                    <StatusBadge status={book.status} />
-                                    {book.tags && book.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-1">
-                                            {book.tags.slice(0, 2).map(tag => (
-                                                <Badge key={tag.id} label={tag.name} color={tag.color} size="sm" />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                ) : books.length === 0 ? (
+                    <Card hover={false}>
+                        <div className="text-center py-12 text-[var(--text-muted)]">
+                            <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>No Books</p>
+                            <Link href="/search?tab=books" className="text-sm text-[var(--accent)] hover:underline mt-2 inline-block">
+                                Search and add books →
                             </Link>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                        </div>
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {books.map((book) => (
+                            <Card key={book.id} className="p-0 overflow-hidden group relative">
+                                <Link href={`/books/${book.id}`}>
+                                    <div className="aspect-[2/3] bg-[var(--bg-tertiary)] relative">
+                                        {book.cover_url ? (
+                                            <Image
+                                                src={book.cover_url}
+                                                alt={book.title}
+                                                fill
+                                                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                                        )}
+                                    </div>
+                                    <div className="p-3 space-y-1.5">
+                                        <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{book.title}</p>
+                                        {book.author && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{book.author}</p>}
+                                        <div className="flex items-center gap-2">
+                                            <StarRating value={book.rating || 0} readonly size="sm" />
+                                        </div>
+                                        <StatusBadge status={book.status} />
+                                        {book.tags && book.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                {book.tags.slice(0, 2).map(tag => (
+                                                    <Badge key={tag.id} label={tag.name} color={tag.color} size="sm" />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </Link>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

@@ -22,6 +22,8 @@ type FlatItemShape = RakutenItem;
 export async function GET(request: NextRequest) {
     const query = request.nextUrl.searchParams.get('q');
     if (!query) return NextResponse.json({ items: [] });
+    const normalized = query.replace(/[^\dXx]/g, '');
+    const looksLikeIsbn = /^\d{13}$/.test(normalized) || /^\d{9}[\dXx]$/.test(normalized);
 
     const appId = process.env.RAKUTEN_APP_ID;
     const accessKey = process.env.RAKUTEN_ACCESS_KEY;
@@ -33,11 +35,15 @@ export async function GET(request: NextRequest) {
         const params = new URLSearchParams({
             applicationId: appId,
             accessKey,
-            title: query,
             hits: '20',
             outOfStockFlag: '1',
             format: 'json',
         });
+        if (looksLikeIsbn) {
+            params.set('isbn', normalized.toUpperCase());
+        } else {
+            params.set('title', query);
+        }
 
         const requestOrigin = request.headers.get('origin');
         const requestReferer = request.headers.get('referer');

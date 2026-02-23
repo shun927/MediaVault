@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -10,7 +11,8 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Input';
 import { createClient } from '@/lib/supabase';
-import type { TMDBSearchResult, BookSearchResult, Tag } from '@/lib/types';
+import type { TMDBSearchResult, BookSearchResult, SpotifySearchResult, Tag } from '@/lib/types';
+import { BOOK_STATUS_OPTIONS, MOVIE_STATUS_OPTIONS, MUSIC_STATUS_OPTIONS } from '@/lib/status';
 
 export default function SearchPageWrapper() {
     return (
@@ -22,17 +24,29 @@ export default function SearchPageWrapper() {
 
 function SearchPage() {
     const searchParams = useSearchParams();
-    const [tab, setTab] = useState<'movies' | 'books'>(searchParams.get('tab') === 'books' ? 'books' : 'movies');
+    const initialTab = searchParams.get('tab');
+    const [tab, setTab] = useState<'movies' | 'books' | 'music'>(
+        initialTab === 'books' ? 'books' : initialTab === 'music' ? 'music' : 'movies'
+    );
     const [query, setQuery] = useState('');
     const [movieResults, setMovieResults] = useState<TMDBSearchResult[]>([]);
     const [bookResults, setBookResults] = useState<BookSearchResult[]>([]);
+    const [musicResults, setMusicResults] = useState<SpotifySearchResult[]>([]);
     const [searching, setSearching] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
     const [tags, setTags] = useState<Tag[]>([]);
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const [scannerError, setScannerError] = useState<string | null>(null);
+    const [scannerActive, setScannerActive] = useState(false);
+    const [barcodeSupported, setBarcodeSupported] = useState(true);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const stopLoopRef = useRef(false);
 
     // 追加モーダル
     const [selectedMovie, setSelectedMovie] = useState<TMDBSearchResult | null>(null);
     const [selectedBook, setSelectedBook] = useState<BookSearchResult | null>(null);
+    const [selectedMusic, setSelectedMusic] = useState<SpotifySearchResult | null>(null);
     const [addForm, setAddForm] = useState({ rating: 0, status: 'wishlist', note: '', selectedTags: [] as string[], watchedEpisode: 0 });
     const [adding, setAdding] = useState(false);
 
@@ -41,23 +55,37 @@ function SearchPage() {
         supabase.from('tags').select('*').then(({ data }) => setTags((data as Tag[]) || []));
     }, []);
 
-    async function handleSearch() {
-        if (!query.trim()) return;
+    async function searchBooksByQuery(bookQuery: string) {
+        const res = await fetch(`/api/search/books?q=${encodeURIComponent(bookQuery)}`);
+        const data = await res.json();
+        setBookResults(data.items || []);
+        if (!res.ok || data.error) {
+            setSearchError(data.error || `Search failed (${res.status})`);
+        } else if (!data.items?.length) {
+            setSearchError('No books found.');
+        }
+    }
+
+    async function handleSearch(searchQuery?: string) {
+        const q = (searchQuery ?? query).trim();
+        if (!q) return;
         setSearching(true);
         setSearchError(null);
         try {
             if (tab === 'movies') {
-                const res = await fetch(`/api/search/movies?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/search/movies?q=${encodeURIComponent(q)}`);
                 const data = await res.json();
                 setMovieResults(data.results || []);
+            } else if (tab === 'books') {
+                await searchBooksByQuery(q);
             } else {
-                const res = await fetch(`/api/search/books?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`/api/search/music?q=${encodeURIComponent(q)}`);
                 const data = await res.json();
-                setBookResults(data.items || []);
+                setMusicResults(data.items || []);
                 if (!res.ok || data.error) {
                     setSearchError(data.error || `Search failed (${res.status})`);
                 } else if (!data.items?.length) {
-                    setSearchError('No books found.');
+                    setSearchError('No music found.');
                 }
             }
         } catch {
@@ -65,6 +93,101 @@ function SearchPage() {
         }
         setSearching(false);
     }
+
+    function stopScanner() {
+        stopLoopRef.current = true;
+        setScannerActive(false);
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+    }
+
+    function normalizeIsbn(rawValue: string): string | null {
+        const digits = rawValue.replace(/[^\dXx]/g, '');
+        const isbn13 = digits.match(/\d{13}/)?.[0];
+        if (isbn13 && (isbn13.startsWith('978') || isbn13.startsWith('979'))) return isbn13;
+        const isbn10 = digits.match(/\d{9}[\dXx]/)?.[0];
+        if (isbn10) return isbn10.toUpperCase();
+        return null;
+    }
+
+    async function startScanner() {
+        if (typeof window === 'undefined') return;
+        setScannerError(null);
+        setBarcodeSupported(true);
+        stopLoopRef.current = false;
+
+        if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+            setScannerError('Camera API is not available in this browser.');
+            return;
+        }
+        const BarcodeDetectorCtor = (window as { BarcodeDetector?: new (config?: unknown) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
+        if (!BarcodeDetectorCtor) {
+            setBarcodeSupported(false);
+            setScannerError(null);
+            setScannerActive(false);
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+            }
+            setScannerActive(true);
+
+            const detector = new BarcodeDetectorCtor({
+                formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+            });
+
+            const scanLoop = async () => {
+                if (stopLoopRef.current || !videoRef.current) return;
+                try {
+                    const barcodes = await detector.detect(videoRef.current);
+                    if (barcodes.length > 0) {
+                        const hit = barcodes.find((b) => normalizeIsbn(b.rawValue || ''));
+                        if (hit?.rawValue) {
+                            const isbn = normalizeIsbn(hit.rawValue);
+                            if (isbn) {
+                                setQuery(isbn);
+                                setTab('books');
+                                setScannerOpen(false);
+                                stopScanner();
+                                await handleSearch(isbn);
+                                return;
+                            }
+                        }
+                    }
+                } catch {
+                    setScannerError('Failed to detect barcode. Please keep the barcode in frame and retry.');
+                }
+                window.setTimeout(scanLoop, 220);
+            };
+
+            void scanLoop();
+        } catch {
+            setScannerError('Unable to access camera. Please allow camera permission and retry.');
+        }
+    }
+
+    useEffect(() => {
+        if (!scannerOpen) {
+            stopScanner();
+            return;
+        }
+        void startScanner();
+        return () => stopScanner();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scannerOpen]);
 
     async function addMovie() {
         if (!selectedMovie) return;
@@ -94,6 +217,15 @@ function SearchPage() {
             await supabase.from('movie_tags').insert(
                 addForm.selectedTags.map(tagId => ({ movie_id: movie.id, tag_id: tagId }))
             );
+        }
+
+        if (movie && addForm.status === 'watched') {
+            await supabase.from('viewing_history').insert({
+                movie_id: movie.id,
+                user_id: user.id,
+                watched_at: new Date().toISOString(),
+                note: null,
+            });
         }
 
         setSelectedMovie(null);
@@ -129,7 +261,58 @@ function SearchPage() {
             );
         }
 
+        if (book && addForm.status === 'read') {
+            await supabase.from('reading_history').insert({
+                book_id: book.id,
+                user_id: user.id,
+                read_at: new Date().toISOString(),
+                note: null,
+            });
+        }
+
         setSelectedBook(null);
+        resetAddForm();
+        setAdding(false);
+    }
+
+    async function addMusic() {
+        if (!selectedMusic) return;
+        setAdding(true);
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const yearMatch = selectedMusic.releaseDate?.match(/\d{4}/);
+        const { data: created } = await supabase.from('music').insert({
+            user_id: user.id,
+            spotify_id: selectedMusic.id,
+            title: selectedMusic.title,
+            artwork_url: selectedMusic.image || null,
+            artist: selectedMusic.artist || null,
+            year: yearMatch ? parseInt(yearMatch[0], 10) : null,
+            type: selectedMusic.type,
+            rating: addForm.rating || null,
+            status: addForm.status,
+            note: addForm.note || null,
+            listened_at: addForm.status === 'listened' ? new Date().toISOString() : null,
+        }).select('id').single();
+
+        if (created && addForm.selectedTags.length > 0) {
+            await supabase.from('music_tags').insert(
+                addForm.selectedTags.map(tagId => ({ music_id: created.id, tag_id: tagId }))
+            );
+        }
+
+        if (created && addForm.status === 'listened') {
+            await supabase.from('listening_history').insert({
+                music_id: created.id,
+                user_id: user.id,
+                listened_at: new Date().toISOString(),
+                note: null,
+            });
+        }
+
+        setSelectedMusic(null);
         resetAddForm();
         setAdding(false);
     }
@@ -147,29 +330,38 @@ function SearchPage() {
                     </div>
                     <div className="app-topbar-controls ml-auto">
                         <div className="app-pill-group">
-                            {(['movies', 'books'] as const).map(t => (
+                            {(['movies', 'books', 'music'] as const).map(t => (
                                 <button
                                     key={t}
-                                    onClick={() => { setTab(t); setMovieResults([]); setBookResults([]); }}
+                                    onClick={() => { setTab(t); setMovieResults([]); setBookResults([]); setMusicResults([]); }}
                                     className={`app-pill-btn ${tab === t ? 'is-active' : ''}`}
                                 >
-                                    {t === 'movies' ? 'Films' : 'Books'}
+                                    {t === 'movies' ? 'Films' : t === 'books' ? 'Books' : 'Music'}
                                 </button>
                             ))}
                         </div>
                         <input
                             className="app-control-input"
-                            placeholder={tab === 'movies' ? 'Search movies, anime, TV shows...' : 'Search books...'}
+                            placeholder={
+                                tab === 'movies'
+                                    ? 'Search movies, anime, TV shows...'
+                                    : tab === 'books'
+                                        ? 'Search books...'
+                                        : 'Search songs and albums...'
+                            }
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         />
-                        <Button onClick={handleSearch} isLoading={searching} variant="secondary">Search</Button>
+                        <Button onClick={() => void handleSearch()} isLoading={searching} variant="secondary">Search</Button>
+                        {tab === 'books' && (
+                            <Button onClick={() => setScannerOpen(true)} variant="secondary">Scan ISBN</Button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {tab === 'books' && searchError && (
+            {(tab === 'books' || tab === 'music') && searchError && (
                 <p className="text-sm text-red-400">{searchError}</p>
             )}
 
@@ -184,7 +376,13 @@ function SearchPage() {
                         >
                             <div className="aspect-[2/3] bg-[var(--bg-tertiary)] relative">
                                 {item.poster_path ? (
-                                    <img src={`https://image.tmdb.org/t/p/w300${item.poster_path}`} alt={item.title} className="w-full h-full object-cover" />
+                                    <Image
+                                        src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                                        alt={item.title}
+                                        fill
+                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
                                 )}
@@ -206,6 +404,47 @@ function SearchPage() {
                 </div>
             )}
 
+            {/* 音楽結果 */}
+            {tab === 'music' && musicResults.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {musicResults.map(item => (
+                        <Card
+                            key={`${item.type}-${item.id}`}
+                            className="p-0 overflow-hidden group cursor-pointer"
+                            onClick={() => { setSelectedMusic(item); resetAddForm(); }}
+                        >
+                            <div className="no-underline">
+                                <div className="aspect-square bg-[var(--bg-tertiary)] relative">
+                                    {item.image ? (
+                                        <Image
+                                            src={item.image}
+                                            alt={item.title}
+                                            fill
+                                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
+                                    )}
+                                    <span
+                                        className="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                    >
+                                        {item.type}
+                                    </span>
+                                </div>
+                                <div className="p-3 space-y-1">
+                                    <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                    {item.artist && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.artist}</p>}
+                                    {item.albumName && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.albumName}</p>}
+                                    {item.releaseDate && <p className="text-[10px] text-[var(--text-muted)]">{item.releaseDate.slice(0, 4)}</p>}
+                                </div>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
             {/* 本結果 */}
             {tab === 'books' && bookResults.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -217,7 +456,13 @@ function SearchPage() {
                         >
                             <div className="aspect-[2/3] bg-[var(--bg-tertiary)] relative">
                                 {book.thumbnail ? (
-                                    <img src={book.thumbnail} alt={book.title} className="w-full h-full object-cover" />
+                                    <Image
+                                        src={book.thumbnail}
+                                        alt={book.title}
+                                        fill
+                                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
                                 )}
@@ -236,7 +481,15 @@ function SearchPage() {
                 {selectedMovie && (
                     <div className="space-y-4">
                         <div className="flex gap-3">
-                            {selectedMovie.poster_path && <img src={`https://image.tmdb.org/t/p/w200${selectedMovie.poster_path}`} alt="" className="w-20 rounded-lg" />}
+                            {selectedMovie.poster_path && (
+                                <Image
+                                    src={`https://image.tmdb.org/t/p/w200${selectedMovie.poster_path}`}
+                                    alt=""
+                                    className="w-20 rounded-lg"
+                                    width={80}
+                                    height={120}
+                                />
+                            )}
                             <div>
                                 <div className="flex items-center gap-2">
                                     <p className="font-medium">{selectedMovie.title}</p>
@@ -252,7 +505,7 @@ function SearchPage() {
                             </div>
                         </div>
                         <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
-                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={[{ value: 'watched', label: 'Watched' }, { value: 'watching', label: 'Watching' }, { value: 'wishlist', label: 'Wishlist' }]} />
+                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MOVIE_STATUS_OPTIONS} />
 
                         {/* TV用進捗入力 */}
                         {selectedMovie.media_type === 'tv' && (
@@ -302,14 +555,22 @@ function SearchPage() {
                 {selectedBook && (
                     <div className="space-y-4">
                         <div className="flex gap-3">
-                            {selectedBook.thumbnail && <img src={selectedBook.thumbnail} alt="" className="w-20 rounded-lg" />}
+                            {selectedBook.thumbnail && (
+                                <Image
+                                    src={selectedBook.thumbnail}
+                                    alt=""
+                                    className="w-20 rounded-lg"
+                                    width={80}
+                                    height={120}
+                                />
+                            )}
                             <div>
                                 <p className="font-medium">{selectedBook.title}</p>
                                 {selectedBook.author && <p className="text-xs text-[var(--text-muted)]">{selectedBook.author}</p>}
                             </div>
                         </div>
                         <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
-                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={[{ value: 'read', label: 'Read' }, { value: 'reading', label: 'Reading' }, { value: 'wishlist', label: 'Wishlist' }]} />
+                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={BOOK_STATUS_OPTIONS} />
                         <Textarea label="Notes" placeholder="Write your thoughts..." value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
                         {tags.length > 0 && (
                             <div>
@@ -326,6 +587,90 @@ function SearchPage() {
                         <Button onClick={addBook} isLoading={adding} className="w-full">Add to Collection</Button>
                     </div>
                 )}
+            </Modal>
+
+            {/* 音楽追加モーダル */}
+            <Modal isOpen={!!selectedMusic} onClose={() => setSelectedMusic(null)} title={selectedMusic?.type === 'album' ? 'Add Album' : 'Add Track'}>
+                {selectedMusic && (
+                    <div className="space-y-4">
+                        <div className="flex gap-3">
+                            {selectedMusic.image && (
+                                <Image
+                                    src={selectedMusic.image}
+                                    alt=""
+                                    className="w-20 rounded-lg"
+                                    width={80}
+                                    height={80}
+                                />
+                            )}
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-medium">{selectedMusic.title}</p>
+                                    <span
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+                                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                    >
+                                        {selectedMusic.type}
+                                    </span>
+                                </div>
+                                {selectedMusic.artist && <p className="text-xs text-[var(--text-muted)] mt-0.5">{selectedMusic.artist}</p>}
+                                {selectedMusic.albumName && <p className="text-xs text-[var(--text-muted)]">{selectedMusic.albumName}</p>}
+                                {selectedMusic.releaseDate && <p className="text-xs text-[var(--text-muted)]">{selectedMusic.releaseDate.slice(0, 4)}</p>}
+                                {selectedMusic.spotifyUrl && (
+                                    <a
+                                        href={selectedMusic.spotifyUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-[var(--accent)] hover:underline inline-block mt-1"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Open in Spotify
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
+                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MUSIC_STATUS_OPTIONS} />
+                        <Textarea label="Notes" placeholder="Write your thoughts..." value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
+                        {tags.length > 0 && (
+                            <div>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {tags.map(tag => (
+                                        <button key={tag.id} type="button" onClick={() => setAddForm(p => ({ ...p, selectedTags: p.selectedTags.includes(tag.id) ? p.selectedTags.filter(id => id !== tag.id) : [...p.selectedTags, tag.id] }))} className={`cursor-pointer ${addForm.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''} rounded-full`}>
+                                            <Badge label={tag.name} color={tag.color} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <Button onClick={addMusic} isLoading={adding} className="w-full">Add to Collection</Button>
+                    </div>
+                )}
+            </Modal>
+
+            {/* ISBNスキャナ */}
+            <Modal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} title="Scan ISBN Barcode">
+                <div className="space-y-3">
+                    <p className="text-sm text-[var(--text-muted)]">
+                        本のバーコードをカメラにかざすと自動で検索します。
+                    </p>
+                    <div className="rounded-[8px] overflow-hidden border border-[var(--border)] bg-black/40">
+                        <video ref={videoRef} className="w-full aspect-video object-cover" muted playsInline />
+                    </div>
+                    {!barcodeSupported && (
+                        <p className="text-xs text-[var(--text-muted)]">
+                            このブラウザはバーコード読み取りに未対応です。
+                        </p>
+                    )}
+                    {scannerError && <p className="text-xs text-red-400">{scannerError}</p>}
+                    <div className="flex items-center justify-end gap-2">
+                        <Button variant="secondary" onClick={() => setScannerOpen(false)}>Close</Button>
+                        {!scannerActive && barcodeSupported && (
+                            <Button onClick={startScanner}>Retry</Button>
+                        )}
+                    </div>
+                </div>
             </Modal>
         </div>
     );

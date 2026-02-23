@@ -31,9 +31,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 TMDB_API_KEY=your_tmdb_api_key
 RAKUTEN_APP_ID=your_rakuten_app_id
 RAKUTEN_ACCESS_KEY=your_rakuten_access_key
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 # Optional (for deployed environments)
 # RAKUTEN_ALLOWED_ORIGIN=https://your-app-domain.vercel.app
 # RAKUTEN_ALLOWED_REFERRER=https://your-app-domain.vercel.app/
+# SPOTIFY_MARKET=JP
 ```
 
 ### Supabase / OAuth 設定
@@ -109,6 +112,25 @@ RAKUTEN_ALLOWED_ORIGIN=https://media-vault-rose.vercel.app
 RAKUTEN_ALLOWED_REFERRER=https://media-vault-rose.vercel.app/
 ```
 
+### Spotify API メモ（OAuth2.0）
+
+このプロジェクトの Spotify 連携は **OAuth2 Client Credentials** フローを使用します。
+
+- 必須環境変数: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+- 任意環境変数: `SPOTIFY_MARKET`（例: `JP`, `US`）
+- 実装: `src/app/api/search/music/route.ts`
+- 検索対象: `track`, `album`
+
+レスポンスは `SpotifySearchResult` 型（`src/lib/types.ts`）に正規化して返します。
+
+### ISBN バーコード読み取り（実装メモ）
+
+- 実装箇所: `src/app/(app)/search/page.tsx`
+- 動作: Books タブで `Scan ISBN` を押すとカメラ起動し、ISBN（EAN-13 など）を検出して自動検索
+- 技術: `navigator.mediaDevices.getUserMedia` + `BarcodeDetector`
+- 制約: `BarcodeDetector` 非対応ブラウザでは手入力検索にフォールバック
+- 備考: カメラ利用のため、本番環境では HTTPS が必要（`localhost` は例外）
+
 ```ts
 // src/lib/types.ts
 export interface BookSearchResult {
@@ -127,9 +149,9 @@ export interface BookSearchResult {
 
 ### Phase 2
 
-- **Spotify API 連携**: OAuth2.0 による曲・アルバム検索
+- **Spotify API 連携**: OAuth2.0 による曲・アルバム検索（完了）
 - **年表（タイムライン）ビュー**: 鑑賞日ベースの横スクロール「自分カルチャー史」
-- **ISBN バーコード読み取り**: カメラで本のバーコードをスキャンして検索
+- **ISBN バーコード読み取り**: カメラで本のバーコードをスキャンして検索（完了）
 - **Web Share Target API**: 他アプリから共有を受け取って記録に追加
 - **作品クロスリンク**: 関連作品を紐付けてジャンプできる機能
 
@@ -141,15 +163,15 @@ export interface BookSearchResult {
 
 ### 直近タスク
 
-- [ ] `Dark` テーマ表示を最終確認（Films / Books / Search / Modal）
 - [ ] 作品カードの情報量を調整（例: タイトル + 年のみ）
 - [ ] 編集・削除導線を再設計（カード内ホバー表示の代替）
 - [ ] テーマ切替時のスクリーンショットを README に追加
 
 ### 中期タスク（Phase 2 / 3）
 
-- [ ] Spotify API 連携
-- [ ] ISBN バーコード読み取り
+- [x] Spotify API 連携
+- [x] ISBN バーコード読み取り
+- [ ] TimelineのUIを検討
 - [ ] Web Share Target API
 - [ ] 作品クロスリンク
 - [ ] AI コンシェルジュ
