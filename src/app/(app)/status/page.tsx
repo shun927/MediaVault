@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -12,6 +12,14 @@ import type { Book, Movie, Music } from '@/lib/types';
 import { getRawStatusesForSidebarFilter, isSidebarStatusFilter, SIDEBAR_STATUS_OPTIONS } from '@/lib/status';
 
 export default function StatusPage() {
+    return (
+        <Suspense fallback={<div className="w-full" />}>
+            <StatusPageContent />
+        </Suspense>
+    );
+}
+
+function StatusPageContent() {
     const searchParams = useSearchParams();
     const viewParam = searchParams.get('view');
     const view = isSidebarStatusFilter(viewParam) ? viewParam : 'in-progress';

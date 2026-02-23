@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -19,7 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="min-h-screen bg-[var(--bg-primary)]">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <Suspense fallback={null}>
+                <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+            </Suspense>
 
             <div className="lg:ml-[var(--sidebar-width)] transition-all duration-300">
                 <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />

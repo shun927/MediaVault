@@ -47,6 +47,18 @@ UI が確定次第、ここに画像を追加します。
 - 必須: `RAKUTEN_APP_ID`, `RAKUTEN_ACCESS_KEY`
 - 任意（本番推奨）: `RAKUTEN_ALLOWED_ORIGIN`, `RAKUTEN_ALLOWED_REFERRER`
 
+## DB Migration (Unified Procedure)
+
+DB マイグレーションは、Supabase SQL Editor で以下の順番で実行します。
+
+1. `supabase/migration.sql`（ベーススキーマ）
+2. `supabase_tv_migration.sql`（TV/episode 拡張）
+3. `supabase_music_migration.sql`（music/listening_history 拡張）
+
+注意:
+- すべて冪等（`IF NOT EXISTS` ベース）なので、再実行しても壊れない前提です。
+- 新しいマイグレーションを追加する場合は、上記の順序を崩さずに末尾へ追記してください。
+
 ## ISBN バーコード読み取りの注意
 
 - 実装はブラウザの `BarcodeDetector` と `getUserMedia` を利用しています。

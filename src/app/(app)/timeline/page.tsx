@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import UnifiedItemCard from '@/components/media/UnifiedItemCard';
@@ -23,6 +23,14 @@ interface TimelineEntry {
 }
 
 export default function TimelinePage() {
+    return (
+        <Suspense fallback={<div className="w-full" />}>
+            <TimelinePageContent />
+        </Suspense>
+    );
+}
+
+function TimelinePageContent() {
     const searchParams = useSearchParams();
     const [entries, setEntries] = useState<TimelineEntry[]>([]);
     const [loading, setLoading] = useState(true);

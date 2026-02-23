@@ -56,6 +56,19 @@ npm run build  # 本番ビルド
 npm run start  # 本番サーバー起動
 ```
 
+## DB マイグレーション手順（統一）
+
+Supabase SQL Editor で、以下をこの順番で実行します。
+
+1. `supabase/migration.sql`（ベース）
+2. `supabase_tv_migration.sql`（TV拡張）
+3. `supabase_music_migration.sql`（Music拡張）
+
+運用ルール:
+- すべて冪等（`IF NOT EXISTS`）前提のため、再実行可能です。
+- 追加マイグレーションは番号/順序を保って末尾に積みます。
+- 実行後は `README.md` の手順と同じ内容になっていることを確認します。
+
 ## DB テーブル構成
 
 | テーブル | 説明 |
