@@ -318,6 +318,10 @@
 }
 
 @media (max-width: 640px) {
+  .timeline-month-column {
+    flex: 0 0 calc(100vw - 72px);
+  }
+
   .timeline-month-header {
     padding: 10px 8px;
     font-size: 12px;

@@ -264,7 +264,10 @@ function TimelinePageContent() {
         const monthNode = monthRefs.current[currentMonthKey];
         if (!canvas || !monthNode) return;
 
-        const targetLeft = monthNode.offsetLeft - (canvas.clientWidth / 2 - monthNode.clientWidth / 2);
+        const isMobileViewport = window.matchMedia('(max-width: 640px)').matches;
+        const targetLeft = isMobileViewport
+            ? monthNode.offsetLeft
+            : monthNode.offsetLeft - (canvas.clientWidth / 2 - monthNode.clientWidth / 2);
         const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
         canvas.scrollLeft = Math.max(0, Math.min(maxScrollLeft, targetLeft));
     }, [currentMonthKey]);
