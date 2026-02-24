@@ -136,12 +136,38 @@ function SearchPage() {
     }
 
     function normalizeIsbn(rawValue: string): string | null {
-        const digits = rawValue.replace(/[^\dXx]/g, '');
-        const isbn13 = digits.match(/\d{13}/)?.[0];
-        if (isbn13 && (isbn13.startsWith('978') || isbn13.startsWith('979'))) return isbn13;
-        const isbn10 = digits.match(/\d{9}[\dXx]/)?.[0];
-        if (isbn10) return isbn10.toUpperCase();
+        const normalized = rawValue.replace(/[^0-9Xx]/g, '').toUpperCase();
+        const isbn13Matches = normalized.match(/\d{13}/g) || [];
+        for (const isbn13 of isbn13Matches) {
+            if (isValidIsbn13(isbn13)) return isbn13;
+        }
+        const isbn10Matches = normalized.match(/\d{9}[\dX]/g) || [];
+        for (const isbn10 of isbn10Matches) {
+            if (isValidIsbn10(isbn10)) return isbn10;
+        }
         return null;
+    }
+
+    function isValidIsbn13(isbn13: string): boolean {
+        if (!/^\d{13}$/.test(isbn13)) return false;
+        if (!(isbn13.startsWith('978') || isbn13.startsWith('979'))) return false;
+        const checksum = isbn13
+            .slice(0, 12)
+            .split('')
+            .reduce((sum, ch, i) => sum + Number(ch) * (i % 2 === 0 ? 1 : 3), 0);
+        const checkDigit = (10 - (checksum % 10)) % 10;
+        return checkDigit === Number(isbn13[12]);
+    }
+
+    function isValidIsbn10(isbn10: string): boolean {
+        if (!/^\d{9}[\dX]$/.test(isbn10)) return false;
+        const checksum = isbn10
+            .split('')
+            .reduce((sum, ch, i) => {
+                const value = ch === 'X' ? 10 : Number(ch);
+                return sum + value * (10 - i);
+            }, 0);
+        return checksum % 11 === 0;
     }
 
     function isDuplicateScan(isbn: string) {
@@ -181,7 +207,7 @@ function SearchPage() {
         setScannerActive(true);
 
         const detector = new BarcodeDetectorCtor({
-            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+            formats: ['ean_13'],
         });
 
         const scanLoop = async () => {
@@ -221,9 +247,6 @@ function SearchPage() {
         const hints = new Map();
         hints.set(DecodeHintType.POSSIBLE_FORMATS, [
             BarcodeFormat.EAN_13,
-            BarcodeFormat.EAN_8,
-            BarcodeFormat.UPC_A,
-            BarcodeFormat.UPC_E,
         ]);
 
         const reader = new BrowserMultiFormatReader(hints);

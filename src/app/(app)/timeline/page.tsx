@@ -336,6 +336,12 @@ function TimelinePageContent() {
         return d.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
     }
 
+    function monthShortLabel(year: string, month: string) {
+        const d = new Date(`${year}-${month}-01T00:00:00`);
+        if (Number.isNaN(d.getTime())) return month;
+        return d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    }
+
     function dayLabel(iso: string) {
         const d = new Date(iso);
         if (Number.isNaN(d.getTime())) return '--';
@@ -469,7 +475,10 @@ function TimelinePageContent() {
                                                                 }}
                                                                 className={`timeline-month-hitbox ${year === currentYear && month === currentMonth ? 'is-current-month' : ''}`}
                                                             >
-                                                                <header className="timeline-month-header">{monthLabel(year, month)}</header>
+                                                                <header className="timeline-month-header">
+                                                                    <span className="timeline-month-label-long">{monthLabel(year, month)}</span>
+                                                                    <span className="timeline-month-label-short">{monthShortLabel(year, month)}</span>
+                                                                </header>
                                                             </div>
                                                             <div className="timeline-month-list">
                                                                 {list.map((entry) => (

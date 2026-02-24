@@ -153,6 +153,14 @@
   text-overflow: ellipsis;
 }
 
+.timeline-month-label-long {
+  display: inline;
+}
+
+.timeline-month-label-short {
+  display: none;
+}
+
 .timeline-month-hitbox.is-current-month .timeline-month-header {
   color: var(--text-primary);
 }
@@ -326,6 +334,14 @@
     padding: 10px 8px;
     font-size: 12px;
     letter-spacing: 0.04em;
+  }
+
+  .timeline-month-label-long {
+    display: none;
+  }
+
+  .timeline-month-label-short {
+    display: inline;
   }
 
   .timeline-entry-meta {
