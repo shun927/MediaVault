@@ -99,7 +99,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {isShortViewport && <SettingsLink active={pathname.startsWith('/settings')} onClose={onClose} />}
                 </div>
 
-                <div className="px-5 pt-5">
+                <div className="px-5 pt-4.5">
                     <h3 className="text-[11px] font-extrabold tracking-[0.1em] uppercase" style={{ color: 'var(--sidebar-section)', fontFamily: 'Archivo, sans-serif' }}>
                         Collections
                     </h3>
