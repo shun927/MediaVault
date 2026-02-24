@@ -134,6 +134,13 @@ export default function BookDetailPage() {
         await loadBook();
     }
 
+    async function handleSaveAll() {
+        await handleSaveMeta();
+        if (showHistoryForm) {
+            await handleAddHistory();
+        }
+    }
+
     async function handleDelete() {
         if (!confirm('Delete this book from your collection?')) return;
         const supabase = createClient();
@@ -221,46 +228,12 @@ export default function BookDetailPage() {
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="mb-3">
                                 <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
                                     Reading History
                                     {history.length > 0 && <span className="ml-2 text-[var(--text-primary)]">({history.length})</span>}
                                 </h4>
-                                <button
-                                    onClick={() => setShowHistoryForm(!showHistoryForm)}
-                                    className="detail-page-history-trigger text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
-                                >
-                                    + Log Reread
-                                </button>
                             </div>
-
-                            {showHistoryForm && (
-                                <div className="space-y-3 mb-3 p-3 rounded-[4px] border border-[var(--border)] bg-[var(--bg-tertiary)]">
-                                    <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Date</label>
-                                        <input
-                                            type="date"
-                                            value={historyForm.date}
-                                            onChange={e => setHistoryForm(p => ({ ...p, date: e.target.value }))}
-                                            className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Note (optional)</label>
-                                        <input
-                                            type="text"
-                                            value={historyForm.note}
-                                            onChange={e => setHistoryForm(p => ({ ...p, note: e.target.value }))}
-                                            placeholder="Thoughts on this reread..."
-                                            className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none placeholder:text-[var(--text-muted)]"
-                                        />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button onClick={handleAddHistory} isLoading={savingHistory}>Save</Button>
-                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
-                                    </div>
-                                </div>
-                            )}
 
                             {history.length > 0 ? (
                                 <div className="space-y-1.5">
@@ -277,14 +250,6 @@ export default function BookDetailPage() {
                                                     {h.note && <p className="text-xs text-[var(--text-muted)] truncate">{h.note}</p>}
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleDeleteHistory(h.id)}
-                                                className="p-1 rounded text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
                                         </div>
                                     ))}
                                 </div>
@@ -340,8 +305,68 @@ export default function BookDetailPage() {
                             value={editMeta.note}
                             onChange={(e) => setEditMeta(prev => ({ ...prev, note: e.target.value }))}
                         />
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Reading History (Edit)</label>
+                                <button
+                                    onClick={() => setShowHistoryForm(!showHistoryForm)}
+                                    className="detail-page-history-trigger text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
+                                >
+                                    + Log Reread
+                                </button>
+                            </div>
+                            {showHistoryForm && (
+                                <div className="space-y-3 mb-3 p-3 rounded-[4px] border border-[var(--border)] bg-[var(--bg-secondary)]">
+                                    <div>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Date</label>
+                                        <input
+                                            type="date"
+                                            value={historyForm.date}
+                                            onChange={e => setHistoryForm(p => ({ ...p, date: e.target.value }))}
+                                            className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Note (optional)</label>
+                                        <input
+                                            type="text"
+                                            value={historyForm.note}
+                                            onChange={e => setHistoryForm(p => ({ ...p, note: e.target.value }))}
+                                            placeholder="Thoughts on this reread..."
+                                            className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none placeholder:text-[var(--text-muted)]"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <p className="text-xs text-[var(--text-muted)] self-center">Use "Save Changes" below to add this log.</p>
+                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
+                                    </div>
+                                </div>
+                            )}
+                            {history.length > 0 ? (
+                                <div className="space-y-1.5">
+                                    {history.map(h => (
+                                        <div key={`edit-${h.id}`} className="flex items-start justify-between gap-3 px-3 py-2 rounded-[4px] border border-[var(--border)] bg-[var(--bg-secondary)]">
+                                            <p className="text-sm text-[var(--text-primary)]">
+                                                {new Date(h.read_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteHistory(h.id)}
+                                                className="p-1 rounded text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-[var(--text-muted)] italic">No reading history to edit</p>
+                            )}
+                        </div>
                         <div className="flex items-center gap-3">
-                            <Button onClick={handleSaveMeta} isLoading={savingMeta}>Save Changes</Button>
+                            <Button onClick={handleSaveAll} isLoading={savingMeta || savingHistory}>Save Changes</Button>
                             <StatusBadge status={editMeta.status} />
                         </div>
                     </Card>

@@ -50,33 +50,25 @@ alter table music_tags enable row level security;
 
 do $$
 begin
-    if not exists (
+    if exists (
         select 1 from pg_policies
         where schemaname = 'public' and tablename = 'music_tags' and policyname = 'music_tags_select_own'
     ) then
-        create policy "music_tags_select_own" on music_tags
-            for select using (
-                exists (
-                    select 1 from music m
-                    where m.id = music_tags.music_id and m.user_id = auth.uid()
-                )
-            );
+        drop policy "music_tags_select_own" on music_tags;
     end if;
-end $$;
 
-do $$
-begin
-    if not exists (
+    if exists (
         select 1 from pg_policies
         where schemaname = 'public' and tablename = 'music_tags' and policyname = 'music_tags_insert_own'
     ) then
-        create policy "music_tags_insert_own" on music_tags
-            for insert with check (
-                exists (
-                    select 1 from music m
-                    where m.id = music_tags.music_id and m.user_id = auth.uid()
-                )
-            );
+        drop policy "music_tags_insert_own" on music_tags;
+    end if;
+
+    if exists (
+        select 1 from pg_policies
+        where schemaname = 'public' and tablename = 'music_tags' and policyname = 'music_tags_delete_own'
+    ) then
+        drop policy "music_tags_delete_own" on music_tags;
     end if;
 end $$;
 
@@ -84,10 +76,17 @@ do $$
 begin
     if not exists (
         select 1 from pg_policies
-        where schemaname = 'public' and tablename = 'music_tags' and policyname = 'music_tags_delete_own'
+        where schemaname = 'public' and tablename = 'music_tags' and policyname = 'Users can manage own music_tags'
     ) then
-        create policy "music_tags_delete_own" on music_tags
-            for delete using (
+        create policy "Users can manage own music_tags" on music_tags
+            for all
+            using (
+                exists (
+                    select 1 from music m
+                    where m.id = music_tags.music_id and m.user_id = auth.uid()
+                )
+            )
+            with check (
                 exists (
                     select 1 from music m
                     where m.id = music_tags.music_id and m.user_id = auth.uid()
