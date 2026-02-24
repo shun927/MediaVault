@@ -148,6 +148,9 @@
   letter-spacing: 0.06em;
   color: var(--text-muted);
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .timeline-month-hitbox.is-current-month .timeline-month-header {
@@ -311,5 +314,21 @@
 
   .timeline-entry-side {
     display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-month-header {
+    padding: 10px 8px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .timeline-entry-meta {
+    display: none;
+  }
+
+  .timeline-entry-title {
+    font-size: 12px;
   }
 }
