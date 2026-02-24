@@ -357,7 +357,8 @@ function TimelinePageContent() {
     }
 
     function scrollToYear(year: string) {
-        const target = dividerRefs.current[year] || yearRefs.current[year];
+        const divider = dividerRefs.current[year];
+        const target = divider || yearRefs.current[year];
         const canvas = canvasRef.current;
         if (!target || !canvas) return;
         const canvasRect = canvas.getBoundingClientRect();
@@ -365,7 +366,12 @@ function TimelinePageContent() {
         const rawLeft = canvas.scrollLeft + (targetRect.left - canvasRect.left);
         const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
         const targetLeft = Math.max(0, Math.min(maxScrollLeft, rawLeft));
+        const previousSnapType = canvas.style.scrollSnapType;
+        canvas.style.scrollSnapType = 'none';
         canvas.scrollTo({ left: targetLeft, behavior: 'smooth' });
+        window.setTimeout(() => {
+            canvas.style.scrollSnapType = previousSnapType || '';
+        }, 280);
     }
 
     const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];

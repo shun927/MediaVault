@@ -99,11 +99,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {isShortViewport && <SettingsLink active={pathname.startsWith('/settings')} onClose={onClose} />}
                 </div>
 
-                <div className="px-5 pt-6">
+                <div className="px-5 pt-5">
                     <h3 className="text-[11px] font-extrabold tracking-[0.1em] uppercase" style={{ color: 'var(--sidebar-section)', fontFamily: 'Archivo, sans-serif' }}>
                         Collections
                     </h3>
-                    <div className="mt-2.5 space-y-0.5">
+                    <div className="mt-2 space-y-0.5">
                         <SidebarLink href="/movies" label="Films" count={counts.films} active={pathname.startsWith('/movies')} onClose={onClose} />
                         <SidebarLink href="/books" label="Books" count={counts.books} active={pathname.startsWith('/books')} onClose={onClose} />
                         <SidebarLink href="/music" label="Music" count={counts.music} active={pathname.startsWith('/music')} onClose={onClose} />
@@ -115,7 +115,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <h3 className="text-[11px] font-extrabold tracking-[0.1em] uppercase" style={{ color: 'var(--sidebar-section)', fontFamily: 'Archivo, sans-serif' }}>
                         Status
                     </h3>
-                    <div className="mt-2.5 space-y-0.5">
+                    <div className="mt-2 space-y-0.5">
                         {SIDEBAR_STATUS_OPTIONS.map((status) => (
                             <SidebarLink
                                 key={status.value}
@@ -129,7 +129,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </div>
 
                 {!isShortViewport && (
-                    <div className="px-5 pt-7 pb-6">
+                    <div className="px-5 pt-4 pb-5">
                         <SettingsLink active={pathname.startsWith('/settings')} onClose={onClose} />
                     </div>
                 )}

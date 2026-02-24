@@ -83,6 +83,8 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: 8px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .timeline-year-divider-label {
@@ -247,11 +249,7 @@
 }
 
 .timeline-year-nav-line {
-  display: block;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--border-hover);
-  margin-bottom: 7px;
+  display: none;
 }
 
 .timeline-year-nav-label {
