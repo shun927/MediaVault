@@ -44,9 +44,12 @@ function SearchPage() {
     const [scannerError, setScannerError] = useState<string | null>(null);
     const [scannerActive, setScannerActive] = useState(false);
     const [barcodeSupported, setBarcodeSupported] = useState(true);
+    const [scannerEngine, setScannerEngine] = useState<'native' | 'compat' | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const stopLoopRef = useRef(false);
+    const zxingStopRef = useRef<(() => void) | null>(null);
+    const lastScanRef = useRef<{ value: string; at: number }>({ value: '', at: 0 });
     const sharedSearchDoneRef = useRef(false);
 
     // 追加モーダル
@@ -118,6 +121,11 @@ function SearchPage() {
     function stopScanner() {
         stopLoopRef.current = true;
         setScannerActive(false);
+        setScannerEngine(null);
+        if (zxingStopRef.current) {
+            zxingStopRef.current();
+            zxingStopRef.current = null;
+        }
         if (streamRef.current) {
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
@@ -136,6 +144,106 @@ function SearchPage() {
         return null;
     }
 
+    function isDuplicateScan(isbn: string) {
+        const now = Date.now();
+        const prev = lastScanRef.current;
+        if (prev.value === isbn && now - prev.at < 1800) return true;
+        lastScanRef.current = { value: isbn, at: now };
+        return false;
+    }
+
+    async function handleDetectedIsbn(isbn: string) {
+        if (isDuplicateScan(isbn)) return;
+        setQuery(isbn);
+        setTab('books');
+        setScannerOpen(false);
+        stopScanner();
+        await runSearch('books', isbn);
+    }
+
+    async function startNativeScanner() {
+        const BarcodeDetectorCtor = (window as { BarcodeDetector?: new (config?: unknown) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
+        if (!BarcodeDetectorCtor) {
+            await startCompatScanner();
+            return;
+        }
+
+        setScannerEngine('native');
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+        }
+        setScannerActive(true);
+
+        const detector = new BarcodeDetectorCtor({
+            formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+        });
+
+        const scanLoop = async () => {
+            if (stopLoopRef.current || !videoRef.current) return;
+            try {
+                const barcodes = await detector.detect(videoRef.current);
+                if (barcodes.length > 0) {
+                    const hit = barcodes.find((b) => normalizeIsbn(b.rawValue || ''));
+                    if (hit?.rawValue) {
+                        const isbn = normalizeIsbn(hit.rawValue);
+                        if (isbn) {
+                            await handleDetectedIsbn(isbn);
+                            return;
+                        }
+                    }
+                }
+            } catch {
+                setScannerError('Failed to detect barcode. Please keep the barcode in frame and retry.');
+            }
+            window.setTimeout(scanLoop, 220);
+        };
+
+        void scanLoop();
+    }
+
+    async function startCompatScanner() {
+        if (!videoRef.current) return;
+        setScannerEngine('compat');
+        setScannerError(null);
+        setBarcodeSupported(true);
+
+        const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
+            import('@zxing/browser'),
+            import('@zxing/library'),
+        ]);
+
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+            BarcodeFormat.EAN_13,
+            BarcodeFormat.EAN_8,
+            BarcodeFormat.UPC_A,
+            BarcodeFormat.UPC_E,
+        ]);
+
+        const reader = new BrowserMultiFormatReader(hints);
+
+        const controls = await reader.decodeFromConstraints(
+            { video: { facingMode: { ideal: 'environment' } }, audio: false },
+            videoRef.current,
+            (result) => {
+                if (stopLoopRef.current || !result) return;
+                const isbn = normalizeIsbn(result.getText());
+                if (isbn) {
+                    void handleDetectedIsbn(isbn);
+                }
+            }
+        );
+
+        zxingStopRef.current = () => controls.stop();
+        setScannerActive(true);
+    }
+
     async function startScanner() {
         if (typeof window === 'undefined') return;
         setScannerError(null);
@@ -146,55 +254,8 @@ function SearchPage() {
             setScannerError('Camera API is not available in this browser.');
             return;
         }
-        const BarcodeDetectorCtor = (window as { BarcodeDetector?: new (config?: unknown) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector;
-        if (!BarcodeDetectorCtor) {
-            setBarcodeSupported(false);
-            setScannerError(null);
-            setScannerActive(false);
-            return;
-        }
-
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'environment' } },
-                audio: false,
-            });
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-            setScannerActive(true);
-
-            const detector = new BarcodeDetectorCtor({
-                formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
-            });
-
-            const scanLoop = async () => {
-                if (stopLoopRef.current || !videoRef.current) return;
-                try {
-                    const barcodes = await detector.detect(videoRef.current);
-                    if (barcodes.length > 0) {
-                        const hit = barcodes.find((b) => normalizeIsbn(b.rawValue || ''));
-                        if (hit?.rawValue) {
-                            const isbn = normalizeIsbn(hit.rawValue);
-                            if (isbn) {
-                                setQuery(isbn);
-                                setTab('books');
-                                setScannerOpen(false);
-                                stopScanner();
-                                await runSearch('books', isbn);
-                                return;
-                            }
-                        }
-                    }
-                } catch {
-                    setScannerError('Failed to detect barcode. Please keep the barcode in frame and retry.');
-                }
-                window.setTimeout(scanLoop, 220);
-            };
-
-            void scanLoop();
+            await startNativeScanner();
         } catch {
             setScannerError('Unable to access camera. Please allow camera permission and retry.');
         }
@@ -698,6 +759,11 @@ function SearchPage() {
                     <div className="rounded-[8px] overflow-hidden border border-[var(--border)] bg-black/40">
                         <video ref={videoRef} className="w-full aspect-video object-cover" muted playsInline />
                     </div>
+                    {scannerEngine === 'compat' && (
+                        <p className="text-xs text-[var(--text-muted)]">
+                            互換スキャンモードで読み取り中です（iOS対応）。
+                        </p>
+                    )}
                     {!barcodeSupported && (
                         <p className="text-xs text-[var(--text-muted)]">
                             このブラウザはバーコード読み取りに未対応です。
