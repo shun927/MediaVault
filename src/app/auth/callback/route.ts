@@ -2,8 +2,18 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+function resolveRequestOrigin(request: Request) {
+    const url = new URL(request.url);
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const host = forwardedHost || request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '') || 'https';
+    if (host) return `${proto}://${host}`;
+    return url.origin;
+}
+
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
+    const origin = resolveRequestOrigin(request);
     const code = searchParams.get('code');
     const next = searchParams.get('next') ?? '/dashboard';
 
