@@ -72,18 +72,19 @@ export async function GET(request: NextRequest) {
 
         const requestOrigin = request.headers.get('origin');
         const requestReferer = request.headers.get('referer');
-        const host = request.headers.get('host') || 'localhost:3000';
+        const forwardedHost = request.headers.get('x-forwarded-host');
+        const host = forwardedHost || request.headers.get('host');
         const proto = request.headers.get('x-forwarded-proto') || 'https';
-        const defaultOrigin = `${proto}://${host}`;
+        const defaultOrigin = host ? `${proto}://${host}` : undefined;
         const origin = process.env.RAKUTEN_ALLOWED_ORIGIN || requestOrigin || defaultOrigin;
-        const referer = process.env.RAKUTEN_ALLOWED_REFERRER || requestReferer || `${origin}/`;
+        const referer = process.env.RAKUTEN_ALLOWED_REFERRER || requestReferer || (origin ? `${origin}/` : undefined);
 
         const fetchByParams = async (params: URLSearchParams) => {
             const res = await fetch(`${RAKUTEN_ENDPOINT}?${params}`, {
                 cache: 'no-store',
                 headers: {
-                    Origin: origin,
-                    Referer: referer,
+                    ...(origin ? { Origin: origin } : {}),
+                    ...(referer ? { Referer: referer } : {}),
                 },
             });
             const data = await res.json();
