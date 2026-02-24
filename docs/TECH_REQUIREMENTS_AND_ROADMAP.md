@@ -111,52 +111,7 @@ Supabase SQL Editor で、以下をこの順番で実行します。
 
 `BookSearchResult` 型に合わせてレスポンスを返せば、フロントエンド側のコード変更は不要です。
 
-### 楽天Books API メモ（OpenAPI）
-
-このプロジェクトの楽天連携は `openapi.rakuten.co.jp` を利用しています。
-
-- 必須環境変数: `RAKUTEN_APP_ID`, `RAKUTEN_ACCESS_KEY`
-- 推奨環境変数（デプロイ時）: `RAKUTEN_ALLOWED_ORIGIN`, `RAKUTEN_ALLOWED_REFERRER`
-- 楽天管理画面の「許可されたWebサイト」は、実際にアクセスするドメインを登録してください（例: `media-vault-rose.vercel.app`）
-- `localhost` で実行時に `Authentication service error` が出る場合は、`.env.local` に以下を設定すると動作確認できます:
-
-```env
-RAKUTEN_ALLOWED_ORIGIN=https://media-vault-rose.vercel.app
-RAKUTEN_ALLOWED_REFERRER=https://media-vault-rose.vercel.app/
-```
-
-### Spotify API メモ（OAuth2.0）
-
-このプロジェクトの Spotify 連携は **OAuth2 Client Credentials** フローを使用します。
-
-- 必須環境変数: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
-- 任意環境変数: `SPOTIFY_MARKET`（例: `JP`, `US`）
-- 実装: `src/app/api/search/music/route.ts`
-- 検索対象: `track`, `album`
-
-レスポンスは `SpotifySearchResult` 型（`src/lib/types.ts`）に正規化して返します。
-
-### ISBN バーコード読み取り（実装メモ）
-
-- 実装箇所: `src/app/(app)/search/page.tsx`
-- 動作: Books タブで `Scan ISBN` を押すとカメラ起動し、ISBN（EAN-13 など）を検出して自動検索
-- 技術: `navigator.mediaDevices.getUserMedia` + `BarcodeDetector`
-- 制約: `BarcodeDetector` 非対応ブラウザでは手入力検索にフォールバック
-- 備考: カメラ利用のため、本番環境では HTTPS が必要（`localhost` は例外）
-
-```ts
-// src/lib/types.ts
-export interface BookSearchResult {
-    id: string;           // isbn や API 固有の ID
-    title: string;
-    author: string | null;
-    publishedDate: string | null;
-    description: string | null;
-    thumbnail: string | null;
-    isbn: string | null;
-    publisher: string | null;
-}
-```
+補足の運用メモはローカル専用ファイル（`docs/*.local.md`, `docs/private/`）で管理します。
 
 ## ロードマップ
 
@@ -184,7 +139,7 @@ export interface BookSearchResult {
 
 - [x] Spotify API 連携
 - [x] ISBN バーコード読み取り
-- [ ] TimelineのUIを検討
+- [x] TimelineのUIを検討
 - [ ] Web Share Target API
 - [ ] 作品クロスリンク
 - [ ] AI コンシェルジュ

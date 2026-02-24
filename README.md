@@ -40,13 +40,6 @@ UI が確定次第、ここに画像を追加します。
 - 技術要件 / セットアップ / DB テーブル構成 / カスタマイズ / ロードマップ:
   `docs/TECH_REQUIREMENTS_AND_ROADMAP.md`
 
-## 環境変数メモ（楽天Books）
-
-楽天Books検索（`src/app/api/search/books/route.ts`）では、楽天側の「許可されたWebサイト」設定に合わせるため、リクエストの `Origin` / `Referer` ヘッダーを明示します。
-
-- 必須: `RAKUTEN_APP_ID`, `RAKUTEN_ACCESS_KEY`
-- 任意（本番推奨）: `RAKUTEN_ALLOWED_ORIGIN`, `RAKUTEN_ALLOWED_REFERRER`
-
 ## DB Migration (Unified Procedure)
 
 DB マイグレーションは、Supabase SQL Editor で以下の順番で実行します。
