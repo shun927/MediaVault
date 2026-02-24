@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { createClient } from '@/lib/supabase';
 import type { Profile, Tag } from '@/lib/types';
 import { getRawStatusesForSidebarFilter } from '@/lib/status';
+import type { User } from '@supabase/supabase-js';
 
 const PRESET_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#64748b', '#a855f7'];
 const THEME_OPTIONS = [
@@ -44,37 +45,61 @@ export default function SettingsPage() {
         window.localStorage.setItem('mv-theme', nextTheme);
     }
 
+    async function getCurrentUserSafe(): Promise<User | null> {
+        const supabase = createClient();
+        try {
+            const { data, error } = await supabase.auth.getUser();
+            if (error) throw error;
+            return data.user;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const isLockTimeout = message.includes('LockManager lock') || message.includes('timed out waiting');
+            if (!isLockTimeout) throw error;
+
+            const { data: sessionData } = await supabase.auth.getSession();
+            return sessionData.session?.user || null;
+        }
+    }
+
     async function loadProfile() {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        try {
+            const user = await getCurrentUserSafe();
+            if (!user) {
+                setProfileLoading(false);
+                return;
+            }
 
-        const [{ data: profileData }, { count: mc }, { count: bc }, { count: muc }, { data: movieStatuses }, { data: bookStatuses }, { data: musicStatuses }] = await Promise.all([
-            supabase.from('profiles').select('*').eq('id', user.id).single(),
-            supabase.from('movies').select('*', { count: 'exact', head: true }),
-            supabase.from('books').select('*', { count: 'exact', head: true }),
-            supabase.from('music').select('*', { count: 'exact', head: true }),
-            supabase.from('movies').select('status'),
-            supabase.from('books').select('status'),
-            supabase.from('music').select('status'),
-        ]);
+            const [{ data: profileData }, { count: mc }, { count: bc }, { count: muc }, { data: movieStatuses }, { data: bookStatuses }, { data: musicStatuses }] = await Promise.all([
+                supabase.from('profiles').select('*').eq('id', user.id).single(),
+                supabase.from('movies').select('*', { count: 'exact', head: true }),
+                supabase.from('books').select('*', { count: 'exact', head: true }),
+                supabase.from('music').select('*', { count: 'exact', head: true }),
+                supabase.from('movies').select('status'),
+                supabase.from('books').select('status'),
+                supabase.from('music').select('status'),
+            ]);
 
-        if (profileData) {
-            setProfile(profileData as Profile);
+            if (profileData) {
+                setProfile(profileData as Profile);
+            }
+
+            const allStatuses = [...(movieStatuses || []), ...(bookStatuses || []), ...(musicStatuses || [])].map((item) => item.status);
+            const inProgressList = getRawStatusesForSidebarFilter('in-progress');
+            const onListList = getRawStatusesForSidebarFilter('on-the-list');
+            const completedList = getRawStatusesForSidebarFilter('completed');
+            setStatusStats({
+                inProgress: allStatuses.filter((status) => inProgressList.includes(status)).length,
+                onList: allStatuses.filter((status) => onListList.includes(status)).length,
+                completed: allStatuses.filter((status) => completedList.includes(status)).length,
+            });
+
+            setStats((prev) => ({ ...prev, movies: mc || 0, books: bc || 0, music: muc || 0 }));
+        } catch (error) {
+            console.error('Failed to load profile', error);
+        } finally {
+            setProfileLoading(false);
         }
-
-        const allStatuses = [...(movieStatuses || []), ...(bookStatuses || []), ...(musicStatuses || [])].map((item) => item.status);
-        const inProgressList = getRawStatusesForSidebarFilter('in-progress');
-        const onListList = getRawStatusesForSidebarFilter('on-the-list');
-        const completedList = getRawStatusesForSidebarFilter('completed');
-        setStatusStats({
-            inProgress: allStatuses.filter((status) => inProgressList.includes(status)).length,
-            onList: allStatuses.filter((status) => onListList.includes(status)).length,
-            completed: allStatuses.filter((status) => completedList.includes(status)).length,
-        });
-
-        setStats((prev) => ({ ...prev, movies: mc || 0, books: bc || 0, music: muc || 0 }));
-        setProfileLoading(false);
     }
 
     async function loadTags() {
@@ -102,7 +127,7 @@ export default function SettingsPage() {
     async function createTag() {
         if (!tagForm.name.trim()) return;
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getCurrentUserSafe();
         if (!user) return;
 
         await supabase.from('tags').insert({ user_id: user.id, name: tagForm.name.trim(), color: tagForm.color });
