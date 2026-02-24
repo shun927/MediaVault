@@ -111,6 +111,31 @@
   text-decoration: none;
 }
 
+.sortBtn {
+  width: auto;
+  padding: 0 12px;
+  gap: 8px;
+}
+
+.sortBtnLabel {
+  font-family: 'Archivo', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.sortBtnLabelShort {
+  display: none;
+  font-family: 'Archivo', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.viewToggleBtn {
+  display: inline-flex;
+}
+
 .content {
   padding: 18px 36px 30px;
   display: grid;
@@ -124,7 +149,7 @@
 }
 
 .gridCompact {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -223,7 +248,7 @@
   }
 
   .gridCompact {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 }
 
@@ -245,19 +270,29 @@
     min-width: 200px;
   }
 
+  .sortBtnLabel {
+    display: none;
+  }
+
+  .sortBtnLabelShort {
+    display: inline;
+  }
+
   .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .gridCompact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
   .root {
     min-height: auto;
-    border-radius: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .toolbar {
@@ -274,5 +309,9 @@
 
   .gridCompact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .viewToggleBtn {
+    display: none;
   }
 }

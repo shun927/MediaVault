@@ -109,6 +109,7 @@ export default function DashboardPage() {
     }
 
     const sortLabel = sortMode === 'recent' ? 'Recent' : sortMode === 'title' ? 'Title' : 'Rating';
+    const sortLabelShort = sortMode === 'recent' ? 'R' : sortMode === 'title' ? 'T' : '★';
 
     function toDateLabel(date: string) {
         const parsed = new Date(date);
@@ -148,7 +149,9 @@ export default function DashboardPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
-                    <button className={styles.iconBtn} aria-label={`sort: ${sortLabel}`} title={`Sort: ${sortLabel}`} type="button" onClick={cycleSortMode}>
+                    <button className={`${styles.iconBtn} ${styles.sortBtn}`} aria-label={`sort: ${sortLabel}`} title={`Sort: ${sortLabel}`} type="button" onClick={cycleSortMode}>
+                        <span className={styles.sortBtnLabel}>{sortLabel}</span>
+                        <span className={styles.sortBtnLabelShort}>{sortLabelShort}</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="4" y1="21" x2="4" y2="14" />
                             <line x1="4" y1="10" x2="4" y2="3" />
@@ -162,7 +165,7 @@ export default function DashboardPage() {
                         </svg>
                     </button>
                     <button
-                        className={styles.iconBtn}
+                        className={`${styles.iconBtn} ${styles.viewToggleBtn}`}
                         aria-label={`view: ${viewMode}`}
                         title={`View: ${viewMode === 'grid' ? 'Grid' : 'Compact'}`}
                         type="button"
@@ -204,6 +207,7 @@ export default function DashboardPage() {
                                     dateLabel={toDateLabel(item.createdAt)}
                                     rating={item.rating}
                                     preserveImage={item.type === 'music'}
+                                    compact={viewMode === 'compact'}
                                 />
                             </div>
                         ))}

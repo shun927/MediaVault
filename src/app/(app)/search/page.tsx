@@ -25,10 +25,15 @@ export default function SearchPageWrapper() {
 function SearchPage() {
     const searchParams = useSearchParams();
     const initialTab = searchParams.get('tab');
+    const initialQuery = searchParams.get('q') || '';
+    const sharedTitleHint = searchParams.get('titleHint');
+    const autoSearchFromShare = searchParams.get('auto') === '1';
+    const sharedSpotifyId = searchParams.get('spotifyId');
+    const sharedSpotifyType = searchParams.get('spotifyType');
     const [tab, setTab] = useState<'movies' | 'books' | 'music'>(
         initialTab === 'books' ? 'books' : initialTab === 'music' ? 'music' : 'movies'
     );
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState(initialQuery);
     const [movieResults, setMovieResults] = useState<TMDBSearchResult[]>([]);
     const [bookResults, setBookResults] = useState<BookSearchResult[]>([]);
     const [musicResults, setMusicResults] = useState<SpotifySearchResult[]>([]);
@@ -42,6 +47,7 @@ function SearchPage() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const stopLoopRef = useRef(false);
+    const sharedSearchDoneRef = useRef(false);
 
     // 追加モーダル
     const [selectedMovie, setSelectedMovie] = useState<TMDBSearchResult | null>(null);
@@ -55,8 +61,11 @@ function SearchPage() {
         supabase.from('tags').select('*').then(({ data }) => setTags((data as Tag[]) || []));
     }, []);
 
-    async function searchBooksByQuery(bookQuery: string) {
-        const res = await fetch(`/api/search/books?q=${encodeURIComponent(bookQuery)}`);
+    async function searchBooksByQuery(bookQuery: string, options?: { titleHint?: string | null }) {
+        const endpoint = options?.titleHint
+            ? `/api/search/books?q=${encodeURIComponent(bookQuery)}&titleHint=${encodeURIComponent(options.titleHint)}`
+            : `/api/search/books?q=${encodeURIComponent(bookQuery)}`;
+        const res = await fetch(endpoint);
         const data = await res.json();
         setBookResults(data.items || []);
         if (!res.ok || data.error) {
@@ -66,20 +75,27 @@ function SearchPage() {
         }
     }
 
-    async function handleSearch(searchQuery?: string) {
-        const q = (searchQuery ?? query).trim();
-        if (!q) return;
+    async function runSearch(
+        targetTab: 'movies' | 'books' | 'music',
+        searchQuery: string,
+        options?: { spotifyId?: string | null; spotifyType?: string | null; titleHint?: string | null }
+    ) {
+        const q = searchQuery.trim();
+        if (!q && !(targetTab === 'music' && options?.spotifyId && options?.spotifyType)) return;
         setSearching(true);
         setSearchError(null);
         try {
-            if (tab === 'movies') {
+            if (targetTab === 'movies') {
                 const res = await fetch(`/api/search/movies?q=${encodeURIComponent(q)}`);
                 const data = await res.json();
                 setMovieResults(data.results || []);
-            } else if (tab === 'books') {
-                await searchBooksByQuery(q);
+            } else if (targetTab === 'books') {
+                await searchBooksByQuery(q, { titleHint: options?.titleHint });
             } else {
-                const res = await fetch(`/api/search/music?q=${encodeURIComponent(q)}`);
+                const endpoint = (options?.spotifyId && (options?.spotifyType === 'track' || options?.spotifyType === 'album'))
+                    ? `/api/search/music?q=${encodeURIComponent(q || options.spotifyId)}&spotifyId=${encodeURIComponent(options.spotifyId)}&spotifyType=${options.spotifyType}`
+                    : `/api/search/music?q=${encodeURIComponent(q)}`;
+                const res = await fetch(endpoint);
                 const data = await res.json();
                 setMusicResults(data.items || []);
                 if (!res.ok || data.error) {
@@ -92,6 +108,11 @@ function SearchPage() {
             setSearchError('Search failed. Please try again.');
         }
         setSearching(false);
+    }
+
+    async function handleSearch(searchQuery?: string) {
+        const q = (searchQuery ?? query).trim();
+        await runSearch(tab, q);
     }
 
     function stopScanner() {
@@ -162,7 +183,7 @@ function SearchPage() {
                                 setTab('books');
                                 setScannerOpen(false);
                                 stopScanner();
-                                await handleSearch(isbn);
+                                await runSearch('books', isbn);
                                 return;
                             }
                         }
@@ -188,6 +209,23 @@ function SearchPage() {
         return () => stopScanner();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [scannerOpen]);
+
+    useEffect(() => {
+        if (!autoSearchFromShare || sharedSearchDoneRef.current) return;
+
+        const targetTab = initialTab === 'books' ? 'books' : initialTab === 'music' ? 'music' : 'movies';
+        const q = initialQuery.trim();
+        if (!q && !(targetTab === 'music' && sharedSpotifyId && sharedSpotifyType)) return;
+
+        sharedSearchDoneRef.current = true;
+        setTab(targetTab);
+        setQuery(q);
+        void runSearch(targetTab, q, {
+            spotifyId: sharedSpotifyId,
+            spotifyType: sharedSpotifyType,
+            titleHint: sharedTitleHint,
+        });
+    }, [autoSearchFromShare, initialQuery, initialTab, sharedSpotifyId, sharedSpotifyType, sharedTitleHint]);
 
     async function addMovie() {
         if (!selectedMovie) return;
@@ -426,15 +464,17 @@ function SearchPage() {
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
                                     )}
-                                    <span
-                                        className="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
-                                    >
-                                        {item.type}
-                                    </span>
                                 </div>
                                 <div className="p-3 space-y-1">
-                                    <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                    <div className="flex items-start gap-2">
+                                        <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                        <span
+                                            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                                            style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                        >
+                                            {item.type}
+                                        </span>
+                                    </div>
                                     {item.artist && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.artist}</p>}
                                     {item.albumName && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.albumName}</p>}
                                     {item.releaseDate && <p className="text-[10px] text-[var(--text-muted)]">{item.releaseDate.slice(0, 4)}</p>}

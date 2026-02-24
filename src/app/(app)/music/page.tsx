@@ -100,15 +100,17 @@ export default function MusicPage() {
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
                                         )}
-                                        <span
-                                            className="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                                            style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
-                                        >
-                                            {item.type}
-                                        </span>
                                     </div>
                                     <div className="p-3 space-y-1.5">
-                                        <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                        <div className="flex items-start gap-2">
+                                            <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{item.title}</p>
+                                            <span
+                                                className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                                                style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                                            >
+                                                {item.type}
+                                            </span>
+                                        </div>
                                         {item.artist && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.artist}</p>}
                                         <div className="flex items-center gap-2">
                                             <StarRating value={item.rating || 0} readonly size="sm" />

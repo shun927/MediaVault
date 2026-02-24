@@ -9,6 +9,7 @@ export async function proxy(request: NextRequest) {
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api') ||
         pathname.startsWith('/auth') ||
+        pathname.startsWith('/share-target') ||
         (pathname === '/' && hasOAuthCode) ||
         pathname === '/favicon.ico' ||
         pathname === '/sw.js' ||
@@ -42,6 +43,8 @@ export async function proxy(request: NextRequest) {
         if (!user && pathname !== '/login') {
             const url = request.nextUrl.clone();
             url.pathname = '/login';
+            const next = `${pathname}${request.nextUrl.search}`;
+            url.searchParams.set('next', next || '/dashboard');
             return NextResponse.redirect(url);
         }
 

@@ -222,20 +222,20 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            <div className="px-4 lg:px-9 pt-5 pb-8 grid gap-6 xl:grid-cols-3">
-                <div className="space-y-6 xl:col-span-2">
-                    <Card hover={false}>
-                        <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Profile</h2>
+            <div className="px-4 lg:px-9 pt-5 pb-8 space-y-6">
+                <div className="grid gap-6 xl:grid-cols-[1.6fr_0.7fr_0.7fr] items-stretch">
+                    <Card hover={false} className="h-full p-4">
+                        <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Profile</h2>
                         {profileLoading ? (
                             <div className="space-y-3">
                                 <div className="animate-shimmer rounded h-24 w-full" />
                             </div>
                         ) : (
-                            <div className="space-y-5">
-                                <div className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-tertiary)] px-4 py-4">
-                                    <div className="relative w-16 h-16 rounded-full overflow-hidden border border-[var(--border)] shrink-0" style={{ background: 'var(--bg-secondary)' }}>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-tertiary)] px-3 py-3">
+                                    <div className="relative w-14 h-14 rounded-full overflow-hidden border border-[var(--border)] shrink-0" style={{ background: 'var(--bg-secondary)' }}>
                                         {profile?.avatar_url ? (
-                                            <Image src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" fill sizes="64px" />
+                                            <Image src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" fill sizes="56px" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[var(--text-muted)]">
                                                 {(profile?.display_name || 'U').charAt(0).toUpperCase()}
@@ -243,25 +243,21 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-base font-semibold text-[var(--text-primary)] truncate">{profile?.display_name || 'User'}</p>
-                                        <p className="text-sm text-[var(--text-muted)] mt-0.5">{totalItems} total items</p>
+                                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{profile?.display_name || 'User'}</p>
                                         {profile ? (
-                                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                            <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                                 Joined {new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
                                             </p>
                                         ) : null}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     <StatCard label="Total Items" value={totalItems} />
                                     <StatCard label="Films" value={stats.movies} />
                                     <StatCard label="Books" value={stats.books} />
                                     <StatCard label="Music" value={stats.music} />
                                     <StatCard label="Tags" value={stats.tags} />
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                     <StatCard label="In Progress" value={statusStats.inProgress} />
                                     <StatCard label="On the List" value={statusStats.onList} />
                                     <StatCard label="Completed" value={statusStats.completed} />
@@ -270,6 +266,49 @@ export default function SettingsPage() {
                         )}
                     </Card>
 
+                    <Card hover={false} className="h-full p-4">
+                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Theme</h2>
+                        <p className="text-sm text-[var(--text-muted)] mb-3">
+                            Choose color theme
+                        </p>
+                        <div className="grid grid-cols-1 gap-2">
+                            {THEME_OPTIONS.map((option) => (
+                                <Button
+                                    key={option.key}
+                                    variant={theme === option.key ? 'primary' : 'secondary'}
+                                    onClick={() => handleThemeChange(option.key)}
+                                    className="w-full px-3 py-1.5 text-[13px]"
+                                >
+                                    {option.label}
+                                </Button>
+                            ))}
+                        </div>
+                    </Card>
+
+                    <Card hover={false} className="h-full p-4 flex flex-col">
+                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Data & Account</h2>
+                        <p className="text-sm text-[var(--text-muted)] mb-3">Export/import your records and manage your session.</p>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json"
+                            onChange={handleImport}
+                            className="hidden"
+                        />
+                        <div className="grid grid-cols-1 gap-2">
+                            <Button className="py-1.5" onClick={handleExport} isLoading={exporting} variant="secondary">Export JSON</Button>
+                            <Button className="py-1.5" onClick={() => fileInputRef.current?.click()} isLoading={importing} variant="secondary">Import JSON</Button>
+                            <Button className="py-1.5" onClick={handleLogout} variant="danger">Logout</Button>
+                        </div>
+                        {importResult && (
+                            <p className={`mt-3 text-sm ${importResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
+                                {importResult}
+                            </p>
+                        )}
+                    </Card>
+                </div>
+
+                <div>
                     <Card hover={false}>
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <div>
@@ -304,48 +343,6 @@ export default function SettingsPage() {
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </Card>
-                </div>
-
-                <div className="space-y-6">
-                    <Card hover={false}>
-                        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Theme</h2>
-                        <p className="text-sm text-[var(--text-muted)] mb-4">
-                            Choose color theme
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {THEME_OPTIONS.map((option) => (
-                                <Button
-                                    key={option.key}
-                                    variant={theme === option.key ? 'primary' : 'secondary'}
-                                    onClick={() => handleThemeChange(option.key)}
-                                >
-                                    {option.label}
-                                </Button>
-                            ))}
-                        </div>
-                    </Card>
-
-                    <Card hover={false}>
-                        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Data & Account</h2>
-                        <p className="text-sm text-[var(--text-muted)] mb-4">Export/import your records and manage your session.</p>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".json"
-                            onChange={handleImport}
-                            className="hidden"
-                        />
-                        <div className="grid grid-cols-1 gap-2">
-                            <Button onClick={handleExport} isLoading={exporting} variant="secondary">Export JSON</Button>
-                            <Button onClick={() => fileInputRef.current?.click()} isLoading={importing} variant="secondary">Import JSON</Button>
-                            <Button onClick={handleLogout} variant="danger">Logout</Button>
-                        </div>
-                        {importResult && (
-                            <p className={`mt-3 text-sm ${importResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
-                                {importResult}
-                            </p>
                         )}
                     </Card>
                 </div>
@@ -386,9 +383,9 @@ export default function SettingsPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
     return (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-tertiary)] px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">{label}</p>
-            <p className="text-lg font-semibold text-[var(--text-primary)]">{value}</p>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-tertiary)] px-2.5 py-2 h-[92px] flex flex-col">
+            <p className="text-xs uppercase tracking-[0.08em] text-[var(--text-muted)] leading-tight min-h-[2.4em]">{label}</p>
+            <p className="text-3xl font-semibold text-[var(--text-primary)] leading-none mt-1 [font-variant-numeric:tabular-nums]">{value}</p>
         </div>
     );
 }

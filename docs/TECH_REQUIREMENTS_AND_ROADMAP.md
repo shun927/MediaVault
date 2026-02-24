@@ -133,13 +133,12 @@ Supabase SQL Editor で、以下をこの順番で実行します。
 
 - [ ] 作品カードの情報量を調整（例: タイトル + 年のみ）
 - [ ] 編集・削除導線を再設計（カード内ホバー表示の代替）
-- [ ] テーマ切替時のスクリーンショットを README に追加
 
 ### 中期タスク（Phase 2 / 3）
 
 - [x] Spotify API 連携
 - [x] ISBN バーコード読み取り
 - [x] TimelineのUIを検討
-- [ ] Web Share Target API
+- [x] Web Share Target API
 - [ ] 作品クロスリンク
 - [ ] AI コンシェルジュ

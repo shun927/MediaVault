@@ -13,6 +13,7 @@ interface UnifiedItemCardProps {
     dateLabel: string;
     rating: number | null;
     preserveImage?: boolean;
+    compact?: boolean;
 }
 
 export default function UnifiedItemCard({
@@ -23,11 +24,12 @@ export default function UnifiedItemCard({
     dateLabel,
     rating,
     preserveImage = false,
+    compact = false,
 }: UnifiedItemCardProps) {
     return (
         <Card className="p-0 overflow-hidden group relative h-full">
             <Link href={href} className="no-underline h-full flex flex-col">
-                <div className="aspect-[2/3] bg-transparent relative shrink-0">
+                <div className={`${compact ? 'aspect-[3/4]' : 'aspect-[2/3]'} bg-transparent relative shrink-0`}>
                     {imageUrl ? (
                         <Image
                             src={imageUrl}
@@ -40,20 +42,24 @@ export default function UnifiedItemCard({
                         <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)] bg-[var(--bg-tertiary)]">NO IMAGE</div>
                     )}
                 </div>
-                <div className="p-3 flex flex-col gap-1.5 min-h-[108px]">
-                    <div className="flex items-start gap-2 h-[44px]">
-                        <p className="text-sm font-medium leading-snug text-[var(--text-primary)] line-clamp-2">{title}</p>
-                        <span
-                            className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
-                            style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
-                        >
-                            {badgeLabel}
-                        </span>
+                <div className={`${compact ? 'p-2 min-h-0 gap-1' : 'p-3 min-h-[108px] gap-1.5'} flex flex-col`}>
+                    <div className={`${compact ? 'h-auto' : 'h-[44px]'}`}>
+                        <p className={`${compact ? 'text-xs line-clamp-1' : 'text-sm line-clamp-2'} font-medium leading-snug text-[var(--text-primary)]`}>{title}</p>
                     </div>
-                    <p className="text-xs text-[var(--text-muted)]">{dateLabel}</p>
-                    <div className="flex items-center gap-2 mt-auto">
-                        <StarRating value={rating || 0} readonly size="sm" />
-                    </div>
+                    <span
+                        className="w-fit inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
+                        style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
+                    >
+                        {badgeLabel}
+                    </span>
+                    {!compact && (
+                        <>
+                            <p className="text-xs text-[var(--text-muted)]">{dateLabel}</p>
+                            <div className="flex items-center gap-2 mt-auto">
+                                <StarRating value={rating || 0} readonly size="sm" />
+                            </div>
+                        </>
+                    )}
                 </div>
             </Link>
         </Card>
