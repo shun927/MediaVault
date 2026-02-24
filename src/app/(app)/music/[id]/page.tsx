@@ -59,8 +59,8 @@ export default function MusicDetailPage() {
         void loadMusic();
     }, [loadMusic]);
 
-    async function handleSaveMeta() {
-        if (!item) return;
+    async function handleSaveMeta(): Promise<boolean> {
+        if (!item) return false;
         setSavingMeta(true);
         const supabase = createClient();
         const movingToListened = item.status !== 'listened' && editMeta.status === 'listened';
@@ -74,14 +74,14 @@ export default function MusicDetailPage() {
         if (updateError) {
             alert('保存に失敗しました（作品情報）。');
             setSavingMeta(false);
-            return;
+            return false;
         }
 
         const { error: clearError } = await supabase.from('music_tags').delete().eq('music_id', item.id);
         if (clearError) {
             alert(`タグ更新に失敗しました（削除処理）。\n${clearError.message}`);
             setSavingMeta(false);
-            return;
+            return false;
         }
 
         const nextTagIds = Array.from(new Set(editMeta.selectedTags));
@@ -92,7 +92,7 @@ export default function MusicDetailPage() {
             if (addError) {
                 alert(`タグ更新に失敗しました（追加処理）。\n${addError.message}`);
                 setSavingMeta(false);
-                return;
+                return false;
             }
         }
 
@@ -121,29 +121,37 @@ export default function MusicDetailPage() {
 
         setSavingMeta(false);
         await loadMusic();
+        return true;
     }
 
-    async function handleAddHistory() {
-        if (!item) return;
+    async function handleAddHistory(): Promise<boolean> {
+        if (!item) return false;
         setSavingHistory(true);
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
+            alert('ログイン情報を確認できないため履歴を追加できませんでした。');
             setSavingHistory(false);
-            return;
+            return false;
         }
 
-        await supabase.from('listening_history').insert({
+        const { error: insertError } = await supabase.from('listening_history').insert({
             music_id: item.id,
             user_id: user.id,
             listened_at: new Date(historyForm.date).toISOString(),
             note: historyForm.note.trim() || null,
         });
+        if (insertError) {
+            alert(`履歴追加に失敗しました。\n${insertError.message}`);
+            setSavingHistory(false);
+            return false;
+        }
 
         setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
         setShowHistoryForm(false);
         setSavingHistory(false);
         await loadMusic();
+        return true;
     }
 
     async function handleDeleteHistory(historyId: string) {
@@ -153,8 +161,11 @@ export default function MusicDetailPage() {
     }
 
     async function handleSaveAll() {
-        await handleSaveMeta();
-        if (showHistoryForm) {
+        const shouldAddHistory = showHistoryForm;
+        const metaSaved = await handleSaveMeta();
+        if (!metaSaved) return;
+
+        if (shouldAddHistory) {
             await handleAddHistory();
         }
     }
