@@ -54,7 +54,7 @@ function StatusPageContent() {
         <div className="w-full">
             <div className="app-topbar">
                 <div className="app-topbar-main">
-                    <div>
+                    <div className="app-topbar-title">
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{activeLabel}</h1>
                         <p className="text-sm text-[var(--text-muted)] mt-1">{total} titles</p>
                     </div>

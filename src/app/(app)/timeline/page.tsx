@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Card from '@/components/ui/Card';
-import UnifiedItemCard from '@/components/media/UnifiedItemCard';
 import { createClient } from '@/lib/supabase';
 import { getRawStatusesForSidebarFilter, isSidebarStatusFilter, SIDEBAR_STATUS_OPTIONS, type SidebarStatusFilter } from '@/lib/status';
+import './timeline.css';
 
 type TimelineType = 'movie' | 'book' | 'music';
 
@@ -36,6 +37,15 @@ function TimelinePageContent() {
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState<'all' | TimelineType>('all');
     const [searchText, setSearchText] = useState('');
+    const [activeYear, setActiveYear] = useState<string>('');
+    const yearRefs = useRef<Record<string, HTMLElement | null>>({});
+    const dividerRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const monthRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const canvasRef = useRef<HTMLDivElement | null>(null);
+    const now = useMemo(() => new Date(), []);
+    const currentYear = String(now.getFullYear());
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentMonthKey = `${currentYear}-${currentMonth}`;
 
     useEffect(() => {
         async function loadTimeline() {
@@ -211,44 +221,144 @@ function TimelinePageContent() {
     const allowedStatuses = statusFilter ? getRawStatusesForSidebarFilter(statusFilter) : null;
     const statusLabel = statusFilter ? SIDEBAR_STATUS_OPTIONS.find((option) => option.value === statusFilter)?.label : null;
 
-    const filteredByType = filterType === 'all' ? entries : entries.filter((entry) => entry.type === filterType);
-    const statusFiltered = allowedStatuses ? filteredByType.filter((entry) => allowedStatuses.includes(entry.status)) : filteredByType;
-    const normalizedSearch = searchText.trim().toLowerCase();
-    const filtered = normalizedSearch
-        ? statusFiltered.filter((entry) => entry.title.toLowerCase().includes(normalizedSearch))
-        : statusFiltered;
+    const filtered = useMemo(() => {
+        const filteredByType = filterType === 'all' ? entries : entries.filter((entry) => entry.type === filterType);
+        const statusFiltered = allowedStatuses ? filteredByType.filter((entry) => allowedStatuses.includes(entry.status)) : filteredByType;
+        const normalizedSearch = searchText.trim().toLowerCase();
+        return normalizedSearch
+            ? statusFiltered.filter((entry) => entry.title.toLowerCase().includes(normalizedSearch))
+            : statusFiltered;
+    }, [entries, filterType, allowedStatuses, searchText]);
 
-    const groupedByDay = useMemo(() => {
-        const grouped: Record<string, TimelineEntry[]> = {};
+    const groupedByYearMonth = useMemo(() => {
+        const grouped: Record<string, Record<string, TimelineEntry[]>> = {};
         for (const entry of filtered) {
-            const dayKey = entry.loggedAt.slice(0, 10);
-            if (!grouped[dayKey]) grouped[dayKey] = [];
-            grouped[dayKey].push(entry);
+            const d = new Date(entry.loggedAt);
+            if (Number.isNaN(d.getTime())) continue;
+            const year = String(d.getFullYear());
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(entry);
         }
         return grouped;
     }, [filtered]);
 
-    const days = Object.keys(groupedByDay).sort((a, b) => a.localeCompare(b));
+    const years = useMemo(() => {
+        const availableYears = new Set(Object.keys(groupedByYearMonth));
+        availableYears.add(currentYear);
+        return Array.from(availableYears).sort((a, b) => Number(a) - Number(b));
+    }, [groupedByYearMonth, currentYear]);
 
-    function toTimeLabel(iso: string) {
-        const d = new Date(iso);
-        if (Number.isNaN(d.getTime())) return '--:--';
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const yearsWithEntries = useMemo(() => {
+        const set = new Set<string>();
+        for (const [year, monthsByYear] of Object.entries(groupedByYearMonth)) {
+            const hasEntries = Object.values(monthsByYear).some((monthEntries) => monthEntries.length > 0);
+            if (hasEntries) set.add(year);
+        }
+        return set;
+    }, [groupedByYearMonth]);
+
+    useEffect(() => {
+        if (!years.length) return;
+        setActiveYear((prev) => (prev && years.includes(prev) ? prev : years.includes(currentYear) ? currentYear : years[0]));
+    }, [years, currentYear]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !years.length) return;
+
+        const updateActiveYearFromScroll = () => {
+            const probeX = canvas.scrollLeft + canvas.clientWidth / 2;
+            let current = years[0];
+            for (const year of years) {
+                const anchor = dividerRefs.current[year] || yearRefs.current[year];
+                if (!anchor) continue;
+                if (anchor.offsetLeft <= probeX) current = year;
+                else break;
+            }
+            setActiveYear(current);
+        };
+
+        updateActiveYearFromScroll();
+        canvas.addEventListener('scroll', updateActiveYearFromScroll, { passive: true });
+        window.addEventListener('resize', updateActiveYearFromScroll);
+        return () => {
+            canvas.removeEventListener('scroll', updateActiveYearFromScroll);
+            window.removeEventListener('resize', updateActiveYearFromScroll);
+        };
+    }, [years]);
+
+    useEffect(() => {
+        if (!years.length) return;
+        const canvas = canvasRef.current;
+        const monthNode = monthRefs.current[currentMonthKey];
+        if (!canvas || !monthNode) return;
+
+        const frame = requestAnimationFrame(() => {
+            const targetLeft = monthNode.offsetLeft - (canvas.clientWidth / 2 - monthNode.clientWidth / 2);
+            const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
+            canvas.scrollLeft = Math.max(0, Math.min(maxScrollLeft, targetLeft));
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [years, currentMonthKey]);
+
+    function monthLabel(year: string, month: string) {
+        const d = new Date(`${year}-${month}-01T00:00:00`);
+        if (Number.isNaN(d.getTime())) return month;
+        return d.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
     }
 
-    function toDayLabel(day: string) {
-        const d = new Date(`${day}T00:00:00`);
-        if (Number.isNaN(d.getTime())) return day;
-        return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' });
+    function dayLabel(iso: string) {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '--';
+        return String(d.getDate()).padStart(2, '0');
+    }
+
+    function entryStatusLabel(status: string) {
+        const s = status.toLowerCase();
+        if (s === 'watched') return 'Watched';
+        if (s === 'read') return 'Read';
+        if (s === 'listened') return 'Listened';
+        if (s === 'watching') return 'Active';
+        if (s === 'reading') return 'Active';
+        if (s === 'listening') return 'Active';
+        return status;
+    }
+
+    function itemMeta(entry: TimelineEntry) {
+        if (entry.type === 'movie') return `FILM • ${entry.mediaType?.toUpperCase() === 'TV' ? 'TV' : 'Movie'}`;
+        if (entry.type === 'book') return 'BOOK • Reading';
+        return `MUSIC • ${entry.mediaType?.toUpperCase() || 'Track'}`;
+    }
+
+    function scrollToYear(year: string) {
+        const target = dividerRefs.current[year] || yearRefs.current[year];
+        const canvas = canvasRef.current;
+        if (!target || !canvas) return;
+        const canvasRect = canvas.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const rawLeft = canvas.scrollLeft + (targetRect.left - canvasRect.left);
+        const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
+        const targetLeft = Math.max(0, Math.min(maxScrollLeft, rawLeft));
+        canvas.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    }
+
+    const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+
+    function monthEntries(year: string, month: string) {
+        const monthList = groupedByYearMonth[year]?.[month] || [];
+        return [...monthList].sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime());
     }
 
     return (
-        <div className="w-full">
+        <div className="timeline-page">
             <div className="app-topbar">
                 <div className="app-topbar-main">
-                    <div>
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Timeline</h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">
+                    <div className="app-topbar-title">
+                        <h1 className="text-2xl font-bold timeline-heading">Timeline</h1>
+                        <p className="text-sm timeline-subheading mt-1">
                             {statusLabel ? `${statusLabel} · ` : ''}
                             Your Culture Timeline — {filtered.length} logs
                         </p>
@@ -275,48 +385,100 @@ function TimelinePageContent() {
                 </div>
             </div>
 
-            <div className="px-4 lg:px-9 pt-5 pb-8">
+            <div className="timeline-board-wrap">
                 {loading ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {[...Array(10)].map((_, i) => (
                             <div key={i} className="animate-shimmer rounded-[8px] aspect-[2/3]" />
                         ))}
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : !years.length ? (
                     <Card hover={false}>
                         <div className="py-14 text-center">
-                            <p className="text-lg font-medium mb-2 text-[var(--text-primary)]">No Timeline Logs</p>
-                            <p className="text-sm text-[var(--text-muted)]">Completed items and relogged history will appear here.</p>
+                            <p className="text-lg font-medium mb-2 timeline-heading">No Timeline Logs</p>
+                            <p className="text-sm timeline-subheading">Completed items and relogged history will appear here.</p>
                         </div>
                     </Card>
                 ) : (
-                    <div className="overflow-x-auto pb-2">
-                        <div className="inline-flex items-start gap-8 min-w-max">
-                            {days.map((day) => (
-                                <section key={day} className="shrink-0 space-y-3 min-w-[220px]">
-                                    <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-2 w-[220px]">
-                                        <p className="text-[12px] font-semibold tracking-[0.04em] text-[var(--text-secondary)]">{toDayLabel(day)}</p>
-                                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{groupedByDay[day].length} logs</p>
-                                    </div>
-                                    <div className="flex items-start gap-3">
-                                        {groupedByDay[day].map((entry) => (
-                                            <div key={entry.entryId} className="w-[220px] shrink-0">
-                                                <UnifiedItemCard
-                                                    href={entry.type === 'movie' ? `/movies/${entry.itemId}` : entry.type === 'book' ? `/books/${entry.itemId}` : `/music/${entry.itemId}`}
-                                                    title={entry.title}
-                                                    imageUrl={entry.imageUrl}
-                                                    badgeLabel={entry.type === 'movie' ? (entry.mediaType === 'tv' ? 'TV' : 'FILM') : entry.type === 'book' ? 'BOOK' : 'MUSIC'}
-                                                    dateLabel={toTimeLabel(entry.loggedAt)}
-                                                    rating={entry.rating}
-                                                    preserveImage={entry.type === 'music'}
-                                                />
+                    <>
+                        <div className="timeline-canvas" ref={canvasRef}>
+                            <div className="timeline-years-track">
+                                {years.map((year, index) => (
+                                    <div
+                                        key={year}
+                                        data-year={year}
+                                        ref={(node) => {
+                                            yearRefs.current[year] = node;
+                                        }}
+                                        className="timeline-year-group"
+                                    >
+                                        {(index > 0 || yearsWithEntries.has(year)) && (
+                                            <div
+                                                ref={(node) => {
+                                                    dividerRefs.current[year] = node;
+                                                }}
+                                                className="timeline-year-divider"
+                                                aria-hidden="true"
+                                            >
+                                                <span className="timeline-year-divider-label">{year}</span>
                                             </div>
-                                        ))}
+                                        )}
+                                        <section
+                                            className="timeline-year-section"
+                                        >
+                                            <div className="timeline-month-columns">
+                                                {months.map((month) => {
+                                                    const list = monthEntries(year, month);
+                                                    return (
+                                                        <div key={`${year}-${month}`} className="timeline-month-column">
+                                                            <div
+                                                                ref={(node) => {
+                                                                    monthRefs.current[`${year}-${month}`] = node;
+                                                                }}
+                                                                className={`timeline-month-hitbox ${year === currentYear && month === currentMonth ? 'is-current-month' : ''}`}
+                                                            >
+                                                                <header className="timeline-month-header">{monthLabel(year, month)}</header>
+                                                            </div>
+                                                            <div className="timeline-month-list">
+                                                                {list.map((entry) => (
+                                                                    <Link
+                                                                        key={entry.entryId}
+                                                                        href={entry.type === 'movie' ? `/movies/${entry.itemId}` : entry.type === 'book' ? `/books/${entry.itemId}` : `/music/${entry.itemId}`}
+                                                                        className="timeline-entry"
+                                                                    >
+                                                                        <span className="timeline-entry-day">{dayLabel(entry.loggedAt)}</span>
+                                                                        <span className="timeline-entry-main">
+                                                                            <span className="timeline-entry-title">{entry.title}</span>
+                                                                            <span className="timeline-entry-meta">{itemMeta(entry)}</span>
+                                                                        </span>
+                                                                        <span className="timeline-entry-side">{entryStatusLabel(entry.status)}</span>
+                                                                    </Link>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
                                     </div>
-                                </section>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+
+                        <nav className="timeline-year-nav" aria-label="Timeline years">
+                            {years.map((year) => (
+                                <button
+                                    key={`nav-${year}`}
+                                    type="button"
+                                    onClick={() => scrollToYear(year)}
+                                    className={`timeline-year-nav-item ${activeYear === year ? 'is-active' : ''}`}
+                                >
+                                    <span className="timeline-year-nav-line" />
+                                    <span className="timeline-year-nav-label">{year}</span>
+                                </button>
+                            ))}
+                        </nav>
+                    </>
                 )}
             </div>
         </div>
