@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
@@ -259,6 +259,16 @@ function TimelinePageContent() {
         return set;
     }, [groupedByYearMonth]);
 
+    const centerCurrentMonth = useCallback(() => {
+        const canvas = canvasRef.current;
+        const monthNode = monthRefs.current[currentMonthKey];
+        if (!canvas || !monthNode) return;
+
+        const targetLeft = monthNode.offsetLeft - (canvas.clientWidth / 2 - monthNode.clientWidth / 2);
+        const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
+        canvas.scrollLeft = Math.max(0, Math.min(maxScrollLeft, targetLeft));
+    }, [currentMonthKey]);
+
     useEffect(() => {
         if (!years.length) return;
         setActiveYear((prev) => (prev && years.includes(prev) ? prev : years.includes(currentYear) ? currentYear : years[0]));
@@ -291,18 +301,31 @@ function TimelinePageContent() {
 
     useEffect(() => {
         if (!years.length) return;
-        const canvas = canvasRef.current;
-        const monthNode = monthRefs.current[currentMonthKey];
-        if (!canvas || !monthNode) return;
 
-        const frame = requestAnimationFrame(() => {
-            const targetLeft = monthNode.offsetLeft - (canvas.clientWidth / 2 - monthNode.clientWidth / 2);
-            const maxScrollLeft = canvas.scrollWidth - canvas.clientWidth;
-            canvas.scrollLeft = Math.max(0, Math.min(maxScrollLeft, targetLeft));
-        });
+        const frame = requestAnimationFrame(centerCurrentMonth);
+        const timer = window.setTimeout(centerCurrentMonth, 120);
 
-        return () => cancelAnimationFrame(frame);
-    }, [years, currentMonthKey]);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.clearTimeout(timer);
+        };
+    }, [years, groupedByYearMonth, centerCurrentMonth]);
+
+    useEffect(() => {
+        if (!years.length) return;
+
+        const onViewportChange = () => {
+            requestAnimationFrame(centerCurrentMonth);
+        };
+
+        window.addEventListener('resize', onViewportChange);
+        window.addEventListener('orientationchange', onViewportChange);
+
+        return () => {
+            window.removeEventListener('resize', onViewportChange);
+            window.removeEventListener('orientationchange', onViewportChange);
+        };
+    }, [years, centerCurrentMonth]);
 
     function monthLabel(year: string, month: string) {
         const d = new Date(`${year}-${month}-01T00:00:00`);

@@ -47,6 +47,8 @@
   flex-direction: column;
   overflow-x: auto;
   overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -115,6 +117,8 @@
   border-left: 0;
   border-right: 1px solid var(--border);
   background: transparent;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .timeline-month-column:first-child {
