@@ -326,8 +326,12 @@
 }
 
 @media (max-width: 640px) {
+  .timeline-canvas {
+    scroll-snap-type: x proximity;
+  }
+
   .timeline-month-column {
-    flex: 0 0 calc(100vw - 72px);
+    flex: 0 0 148px;
   }
 
   .timeline-month-header {
