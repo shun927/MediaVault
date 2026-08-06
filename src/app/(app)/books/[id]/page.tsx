@@ -9,7 +9,7 @@ import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Book, Tag, ReadingHistory } from '@/lib/types';
 import { BOOK_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
@@ -28,17 +28,17 @@ export default function BookDetailPage() {
     const [savingHistory, setSavingHistory] = useState(false);
 
     const loadBook = useCallback(async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from('books').select('*').eq('id', params.id).single();
+        const dataClient = createClient();
+        const { data } = await dataClient.from('books').select('*').eq('id', params.id).single();
         if (!data) { router.push('/books'); return; }
 
         const [{ data: bookTags }, { data: historyData }, { data: allTagData }] = await Promise.all([
-            supabase.from('book_tags').select('tag_id').eq('book_id', params.id),
-            supabase.from('reading_history').select('*').eq('book_id', params.id).order('read_at', { ascending: false }),
-            supabase.from('tags').select('*').order('name'),
+            dataClient.from('book_tags').select('tag_id').eq('book_id', params.id),
+            dataClient.from('reading_history').select('*').eq('book_id', params.id).order('read_at', { ascending: false }),
+            dataClient.from('tags').select('*').order('name'),
         ]);
 
-        const selectedTagIds = (bookTags || []).map(bt => bt.tag_id);
+        const selectedTagIds = (bookTags || []).map((bt: { tag_id: string; book_id?: string }) => bt.tag_id);
         const availableTags = (allTagData as Tag[]) || [];
         setAllTags(availableTags);
         setEditMeta({
@@ -61,61 +61,37 @@ export default function BookDetailPage() {
     async function handleSaveMeta() {
         if (!book) return;
         setSavingMeta(true);
-        const supabase = createClient();
-        const movingToRead = book.status !== 'read' && editMeta.status === 'read';
-        await supabase.from('books').update({
-            rating: editMeta.rating || null,
-            status: editMeta.status,
-            note: editMeta.note.trim() || null,
-            read_at: editMeta.status === 'read' ? new Date().toISOString() : book.read_at,
-            updated_at: new Date().toISOString(),
-        }).eq('id', book.id);
-
-        await supabase.from('book_tags').delete().eq('book_id', book.id);
-        if (editMeta.selectedTags.length > 0) {
-            await supabase.from('book_tags').insert(
-                editMeta.selectedTags.map(tagId => ({ book_id: book.id, tag_id: tagId }))
-            );
-        }
-
-        if (movingToRead) {
-            const today = new Date().toISOString().slice(0, 10);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: existingToday } = await supabase
-                    .from('reading_history')
-                    .select('id, read_at')
-                    .eq('book_id', book.id)
-                    .gte('read_at', `${today}T00:00:00.000Z`)
-                    .lt('read_at', `${today}T23:59:59.999Z`)
-                    .limit(1);
-
-                if (!existingToday || existingToday.length === 0) {
-                    await supabase.from('reading_history').insert({
-                        book_id: book.id,
-                        user_id: user.id,
-                        read_at: new Date().toISOString(),
-                        note: null,
-                    });
-                }
-            }
-        }
-
+        const movingToRead = book.status !== "read" && editMeta.status === "read";
+        const response = await fetch(`/api/library/books/${book.id}/metadata`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                values: {
+                    rating: editMeta.rating || null,
+                    status: editMeta.status,
+                    note: editMeta.note.trim() || null,
+                    read_at: editMeta.status === "read" ? new Date().toISOString() : book.read_at,
+                },
+                tagIds: editMeta.selectedTags,
+                addHistory: movingToRead,
+            }),
+        });
         setSavingMeta(false);
+        if (!response.ok) { alert("Save failed. No changes were committed."); return; }
         await loadBook();
     }
 
     async function handleAddHistory() {
         if (!book) return;
         setSavingHistory(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const dataClient = createClient();
+        const { data: { user } } = await dataClient.auth.getUser();
         if (!user) {
             setSavingHistory(false);
             return;
         }
 
-        await supabase.from('reading_history').insert({
+        await dataClient.from('reading_history').insert({
             book_id: book.id,
             user_id: user.id,
             read_at: new Date(historyForm.date).toISOString(),
@@ -129,8 +105,8 @@ export default function BookDetailPage() {
     }
 
     async function handleDeleteHistory(historyId: string) {
-        const supabase = createClient();
-        await supabase.from('reading_history').delete().eq('id', historyId);
+        const dataClient = createClient();
+        await dataClient.from('reading_history').delete().eq('id', historyId);
         await loadBook();
     }
 
@@ -143,10 +119,8 @@ export default function BookDetailPage() {
 
     async function handleDelete() {
         if (!confirm('Delete this book from your collection?')) return;
-        const supabase = createClient();
-        await supabase.from('reading_history').delete().eq('book_id', params.id);
-        await supabase.from('book_tags').delete().eq('book_id', params.id);
-        await supabase.from('books').delete().eq('id', params.id);
+        const dataClient = createClient();
+        await dataClient.from('books').delete().eq('id', params.id);
         router.push('/books');
     }
 
@@ -337,7 +311,7 @@ export default function BookDetailPage() {
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <p className="text-xs text-[var(--text-muted)] self-center">Use "Save Changes" below to add this log.</p>
+                                        <p className="text-xs text-[var(--text-muted)] self-center">Use &quot;Save Changes&quot; below to add this log.</p>
                                         <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
                                     </div>
                                 </div>

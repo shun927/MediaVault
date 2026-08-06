@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Tag } from '@/lib/types';
 
 const PRESET_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#64748b', '#a855f7'];
@@ -20,8 +20,8 @@ export default function TagsPage() {
     const [tagCounts, setTagCounts] = useState<Record<string, number>>({});
 
     async function loadTags() {
-        const supabase = createClient();
-        const { data } = await supabase.from('tags').select('*').order('name');
+        const dataClient = createClient();
+        const { data } = await dataClient.from('tags').select('*').order('name');
         const tagList = (data as Tag[]) || [];
         setTags(tagList);
 
@@ -29,9 +29,9 @@ export default function TagsPage() {
         const counts: Record<string, number> = {};
         for (const tag of tagList) {
             const [{ count: mc }, { count: bc }, { count: muc }] = await Promise.all([
-                supabase.from('movie_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
-                supabase.from('book_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
-                supabase.from('music_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
+                dataClient.from('movie_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
+                dataClient.from('book_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
+                dataClient.from('music_tags').select('*', { count: 'exact', head: true }).eq('tag_id', tag.id),
             ]);
             counts[tag.id] = (mc || 0) + (bc || 0) + (muc || 0);
         }
@@ -46,10 +46,10 @@ export default function TagsPage() {
 
     async function createTag() {
         if (!form.name.trim()) return;
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const dataClient = createClient();
+        const { data: { user } } = await dataClient.auth.getUser();
         if (!user) return;
-        await supabase.from('tags').insert({ user_id: user.id, name: form.name.trim(), color: form.color });
+        await dataClient.from('tags').insert({ user_id: user.id, name: form.name.trim(), color: form.color });
         setForm({ name: '', color: '#6366f1' });
         setShowCreate(false);
         loadTags();
@@ -57,8 +57,8 @@ export default function TagsPage() {
 
     async function updateTag() {
         if (!editTag || !form.name.trim()) return;
-        const supabase = createClient();
-        await supabase.from('tags').update({ name: form.name.trim(), color: form.color }).eq('id', editTag.id);
+        const dataClient = createClient();
+        await dataClient.from('tags').update({ name: form.name.trim(), color: form.color }).eq('id', editTag.id);
         setEditTag(null);
         setForm({ name: '', color: '#6366f1' });
         loadTags();
@@ -66,8 +66,8 @@ export default function TagsPage() {
 
     async function deleteTag(id: string) {
         if (!confirm('Delete this tag?')) return;
-        const supabase = createClient();
-        await supabase.from('tags').delete().eq('id', id);
+        const dataClient = createClient();
+        await dataClient.from('tags').delete().eq('id', id);
         loadTags();
     }
 

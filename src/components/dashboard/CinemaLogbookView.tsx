@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Movie } from '@/lib/types';
 import styles from './CinemaLogbookView.module.css';
 
@@ -15,10 +15,10 @@ export default function CinemaLogbookView() {
 
     useEffect(() => {
         async function load() {
-            const supabase = createClient();
+            const dataClient = createClient();
             const [movieRows, movieCounter] = await Promise.all([
-                supabase.from('movies').select('*').order('created_at', { ascending: false }).limit(24),
-                supabase.from('movies').select('*', { count: 'exact', head: true }),
+                dataClient.from('movies').select('*').order('created_at', { ascending: false }).limit(24),
+                dataClient.from('movies').select('*', { count: 'exact', head: true }),
             ]);
 
             const movieData = (movieRows.data as Movie[]) || [];

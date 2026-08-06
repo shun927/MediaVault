@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import { getRawStatusesForSidebarFilter, isSidebarStatusFilter, SIDEBAR_STATUS_OPTIONS, type SidebarStatusFilter } from '@/lib/status';
 import './timeline.css';
 
@@ -49,7 +49,7 @@ function TimelinePageContent() {
 
     useEffect(() => {
         async function loadTimeline() {
-            const supabase = createClient();
+            const dataClient = createClient();
             const [
                 { data: movieHistory },
                 { data: bookHistory },
@@ -58,29 +58,29 @@ function TimelinePageContent() {
                 { data: booksCompleted },
                 { data: musicCompleted },
             ] = await Promise.all([
-                supabase
+                dataClient
                     .from('viewing_history')
                     .select('id, watched_at, note, movies!inner(id, title, poster_url, media_type, rating, status)')
                     .order('watched_at', { ascending: true }),
-                supabase
+                dataClient
                     .from('reading_history')
                     .select('id, read_at, note, books!inner(id, title, cover_url, rating, status)')
                     .order('read_at', { ascending: true }),
-                supabase
+                dataClient
                     .from('listening_history')
                     .select('id, listened_at, note, music!inner(id, title, artwork_url, type, rating, status)')
                     .order('listened_at', { ascending: true }),
-                supabase
+                dataClient
                     .from('movies')
                     .select('id, title, poster_url, media_type, rating, status, watched_at, created_at')
                     .eq('status', 'watched')
                     .order('watched_at', { ascending: true }),
-                supabase
+                dataClient
                     .from('books')
                     .select('id, title, cover_url, rating, status, read_at, created_at')
                     .eq('status', 'read')
                     .order('read_at', { ascending: true }),
-                supabase
+                dataClient
                     .from('music')
                     .select('id, title, artwork_url, type, rating, status, listened_at, created_at')
                     .eq('status', 'listened')
@@ -274,7 +274,7 @@ function TimelinePageContent() {
 
     useEffect(() => {
         if (!years.length) return;
-        setActiveYear((prev) => (prev && years.includes(prev) ? prev : years.includes(currentYear) ? currentYear : years[0]));
+        queueMicrotask(() => setActiveYear((prev) => (prev && years.includes(prev) ? prev : years.includes(currentYear) ? currentYear : years[0])));
     }, [years, currentYear]);
 
     useEffect(() => {

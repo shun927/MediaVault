@@ -1,87 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { authenticateRequest, forbidden } from "@/lib/auth";
+import { importV1 } from "@/lib/d1/transfer";
+import { ZodError } from "zod";
 
-export async function POST(request: NextRequest) {
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const dynamic = "force-dynamic";
 
-    try {
-        const importData = await request.json();
-
-        // タグのインポート（upsert）
-        if (importData.tags?.length) {
-            for (const tag of importData.tags) {
-                await supabase.from('tags').upsert({
-                    id: tag.id,
-                    user_id: user.id,
-                    name: tag.name,
-                    color: tag.color,
-                    created_at: tag.created_at,
-                }, { onConflict: 'id' });
-            }
-        }
-
-        // 映画のインポート
-        if (importData.movies?.length) {
-            for (const movie of importData.movies) {
-                await supabase.from('movies').upsert({
-                    ...movie,
-                    user_id: user.id,
-                }, { onConflict: 'id' });
-            }
-        }
-
-        // 本のインポート
-        if (importData.books?.length) {
-            for (const book of importData.books) {
-                await supabase.from('books').upsert({
-                    ...book,
-                    user_id: user.id,
-                }, { onConflict: 'id' });
-            }
-        }
-
-        // 音楽のインポート
-        if (importData.music?.length) {
-            for (const item of importData.music) {
-                await supabase.from('music').upsert({
-                    ...item,
-                    user_id: user.id,
-                }, { onConflict: 'id' });
-            }
-        }
-
-        // 中間テーブル
-        if (importData.movie_tags?.length) {
-            await supabase.from('movie_tags').upsert(importData.movie_tags, { onConflict: 'movie_id,tag_id' });
-        }
-        if (importData.book_tags?.length) {
-            await supabase.from('book_tags').upsert(importData.book_tags, { onConflict: 'book_id,tag_id' });
-        }
-        if (importData.music_tags?.length) {
-            await supabase.from('music_tags').upsert(importData.music_tags, { onConflict: 'music_id,tag_id' });
-        }
-
-        // 履歴
-        if (importData.viewing_history?.length) {
-            for (const h of importData.viewing_history) {
-                await supabase.from('viewing_history').upsert({ ...h, user_id: user.id }, { onConflict: 'id' });
-            }
-        }
-        if (importData.reading_history?.length) {
-            for (const h of importData.reading_history) {
-                await supabase.from('reading_history').upsert({ ...h, user_id: user.id }, { onConflict: 'id' });
-            }
-        }
-        if (importData.listening_history?.length) {
-            for (const h of importData.listening_history) {
-                await supabase.from('listening_history').upsert({ ...h, user_id: user.id }, { onConflict: 'id' });
-            }
-        }
-
-        return NextResponse.json({ success: true });
-    } catch {
-        return NextResponse.json({ error: 'Invalid import data' }, { status: 400 });
+export async function POST(request: Request) {
+  try {
+    const { user, env } = await authenticateRequest(request);
+    const length = Number(request.headers.get("content-length") || 0);
+    if (length > 10_000_000) return Response.json({ error: "Import file is too large" }, { status: 413 });
+    const counts = await importV1(env.DB, user, await request.json());
+    return Response.json({ success: true, counts }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    if (error instanceof ZodError || error instanceof SyntaxError) {
+      return Response.json({ error: "Invalid export v1 data" }, { status: 400 });
     }
+    if (error instanceof Error && /Access|token|JWT|claim|configured/.test(error.message)) return forbidden(error);
+    console.error("Import failed", error);
+    return Response.json({ error: "Import failed; no rows were committed" }, { status: 400 });
+  }
 }

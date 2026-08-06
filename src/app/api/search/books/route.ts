@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authenticateSearchRequest, forbidden, upstreamSignal } from '@/lib/auth';
 
 // 楽天ブックス書籍検索 API (OpenAPI)
 // Docs: https://webservice.rakuten.co.jp/documentation/books-book-search
@@ -49,14 +50,20 @@ function mapRakutenItems(data: unknown) {
 }
 
 export async function GET(request: NextRequest) {
-    const query = request.nextUrl.searchParams.get('q');
+    let env;
+    try { ({ env } = await authenticateSearchRequest(request, 'books')); } catch (error) {
+        if (error instanceof Error && error.message === 'Rate limit exceeded') return NextResponse.json({ error: error.message }, { status: 429 });
+        return forbidden(error);
+    }
+    const query = request.nextUrl.searchParams.get('q')?.trim();
     if (!query) return NextResponse.json({ items: [] });
+    if (query.length > 200) return NextResponse.json({ error: 'Query is too long' }, { status: 400 });
     const titleHint = request.nextUrl.searchParams.get('titleHint')?.trim() || '';
     const normalized = query.replace(/[^\dXx]/g, '');
     const looksLikeIsbn = /^\d{13}$/.test(normalized) || /^\d{9}[\dXx]$/.test(normalized);
 
-    const appId = process.env.RAKUTEN_APP_ID;
-    const accessKey = process.env.RAKUTEN_ACCESS_KEY;
+    const appId = env.RAKUTEN_APP_ID;
+    const accessKey = env.RAKUTEN_ACCESS_KEY;
     if (!appId || !accessKey) {
         return NextResponse.json({ items: [], error: 'Rakuten credentials not configured' });
     }
@@ -76,12 +83,13 @@ export async function GET(request: NextRequest) {
         const host = forwardedHost || request.headers.get('host');
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         const defaultOrigin = host ? `${proto}://${host}` : undefined;
-        const origin = process.env.RAKUTEN_ALLOWED_ORIGIN || requestOrigin || defaultOrigin;
-        const referer = process.env.RAKUTEN_ALLOWED_REFERRER || requestReferer || (origin ? `${origin}/` : undefined);
+        const origin = env.RAKUTEN_ALLOWED_ORIGIN || requestOrigin || defaultOrigin;
+        const referer = env.RAKUTEN_ALLOWED_REFERRER || requestReferer || (origin ? `${origin}/` : undefined);
 
         const fetchByParams = async (params: URLSearchParams) => {
             const res = await fetch(`${RAKUTEN_ENDPOINT}?${params}`, {
                 cache: 'no-store',
+                signal: upstreamSignal(request),
                 headers: {
                     ...(origin ? { Origin: origin } : {}),
                     ...(referer ? { Referer: referer } : {}),
@@ -98,11 +106,11 @@ export async function GET(request: NextRequest) {
             firstParams.set('title', query);
         }
 
-        let { res, data } = await fetchByParams(firstParams);
+        const { res, data } = await fetchByParams(firstParams);
 
         if (!res.ok) {
             console.error('[Rakuten API] Error:', res.status, JSON.stringify(data));
-            const message = data?.errors?.errorMessage || `Rakuten API error: ${res.status}`;
+            const message = (data as { errors?: { errorMessage?: string } })?.errors?.errorMessage || `Rakuten API error: ${res.status}`;
             return NextResponse.json({ items: [], error: message }, { status: res.status });
         }
 

@@ -10,7 +10,7 @@ import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Input';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { TMDBSearchResult, BookSearchResult, SpotifySearchResult, Tag } from '@/lib/types';
 import { BOOK_STATUS_OPTIONS, MOVIE_STATUS_OPTIONS, MUSIC_STATUS_OPTIONS } from '@/lib/status';
 
@@ -60,8 +60,8 @@ function SearchPage() {
     const [adding, setAdding] = useState(false);
 
     useEffect(() => {
-        const supabase = createClient();
-        supabase.from('tags').select('*').then(({ data }) => setTags((data as Tag[]) || []));
+        const dataClient = createClient();
+        dataClient.from('tags').select('*').then(({ data }) => setTags((data as Tag[]) || []));
     }, []);
 
     async function searchBooksByQuery(bookQuery: string, options?: { titleHint?: string | null }) {
@@ -69,7 +69,7 @@ function SearchPage() {
             ? `/api/search/books?q=${encodeURIComponent(bookQuery)}&titleHint=${encodeURIComponent(options.titleHint)}`
             : `/api/search/books?q=${encodeURIComponent(bookQuery)}`;
         const res = await fetch(endpoint);
-        const data = await res.json();
+        const data = await res.json() as { items?: BookSearchResult[]; error?: string };
         setBookResults(data.items || []);
         if (!res.ok || data.error) {
             setSearchError(data.error || `Search failed (${res.status})`);
@@ -90,7 +90,7 @@ function SearchPage() {
         try {
             if (targetTab === 'movies') {
                 const res = await fetch(`/api/search/movies?q=${encodeURIComponent(q)}`);
-                const data = await res.json();
+                const data = await res.json() as { results?: TMDBSearchResult[]; error?: string };
                 setMovieResults(data.results || []);
             } else if (targetTab === 'books') {
                 await searchBooksByQuery(q, { titleHint: options?.titleHint });
@@ -99,7 +99,7 @@ function SearchPage() {
                     ? `/api/search/music?q=${encodeURIComponent(q || options.spotifyId)}&spotifyId=${encodeURIComponent(options.spotifyId)}&spotifyType=${options.spotifyType}`
                     : `/api/search/music?q=${encodeURIComponent(q)}`;
                 const res = await fetch(endpoint);
-                const data = await res.json();
+                const data = await res.json() as { items?: SpotifySearchResult[]; error?: string };
                 setMusicResults(data.items || []);
                 if (!res.ok || data.error) {
                     setSearchError(data.error || `Search failed (${res.status})`);
@@ -309,138 +309,90 @@ function SearchPage() {
             spotifyType: sharedSpotifyType,
             titleHint: sharedTitleHint,
         });
+    // runSearch reads the current tab-specific state; this effect is intentionally keyed only by share parameters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoSearchFromShare, initialQuery, initialTab, sharedSpotifyId, sharedSpotifyType, sharedTitleHint]);
+
+    async function createLibraryItem(kind: "movies" | "books" | "music", item: Record<string, unknown>, addHistory: boolean) {
+        setAdding(true);
+        setSearchError(null);
+        try {
+            const response = await fetch("/api/library", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ kind, item, tagIds: addForm.selectedTags, addHistory }),
+            });
+            const result = await response.json() as { error?: string };
+            if (!response.ok) throw new Error(result.error || "Could not add item");
+            setSelectedMovie(null);
+            setSelectedBook(null);
+            setSelectedMusic(null);
+            resetAddForm();
+        } catch (error) {
+            setSearchError(error instanceof Error ? error.message : "Could not add item");
+        } finally {
+            setAdding(false);
+        }
+    }
 
     async function addMovie() {
         if (!selectedMovie) return;
-        setAdding(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: movie } = await supabase.from('movies').insert({
-            user_id: user.id,
+        const watched = addForm.status === "watched";
+        await createLibraryItem("movies", {
             tmdb_id: selectedMovie.id,
             title: selectedMovie.title,
             poster_url: selectedMovie.poster_path ? `https://image.tmdb.org/t/p/w500${selectedMovie.poster_path}` : null,
-            year: selectedMovie.release_date ? parseInt(selectedMovie.release_date.substring(0, 4)) : null,
+            year: selectedMovie.release_date ? Number(selectedMovie.release_date.slice(0, 4)) : null,
             overview: selectedMovie.overview,
             rating: addForm.rating || null,
             status: addForm.status,
             note: addForm.note || null,
-            watched_at: addForm.status === 'watched' ? new Date().toISOString() : null,
+            watched_at: watched ? new Date().toISOString() : null,
             media_type: selectedMovie.media_type,
             number_of_seasons: selectedMovie.number_of_seasons || null,
             number_of_episodes: selectedMovie.number_of_episodes || null,
-            watched_episode: selectedMovie.media_type === 'tv' ? (addForm.watchedEpisode || null) : null,
-        }).select().single();
-
-        if (movie && addForm.selectedTags.length > 0) {
-            await supabase.from('movie_tags').insert(
-                addForm.selectedTags.map(tagId => ({ movie_id: movie.id, tag_id: tagId }))
-            );
-        }
-
-        if (movie && addForm.status === 'watched') {
-            await supabase.from('viewing_history').insert({
-                movie_id: movie.id,
-                user_id: user.id,
-                watched_at: new Date().toISOString(),
-                note: null,
-            });
-        }
-
-        setSelectedMovie(null);
-        resetAddForm();
-        setAdding(false);
+            watched_episode: selectedMovie.media_type === "tv" ? addForm.watchedEpisode || null : null,
+        }, watched);
     }
 
     async function addBook() {
         if (!selectedBook) return;
-        setAdding(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const yearMatch = selectedBook.publishedDate?.match(/\d{4}/);
-        const { data: book } = await supabase.from('books').insert({
-            user_id: user.id,
+        const year = selectedBook.publishedDate?.match(/\d{4}/)?.[0];
+        const read = addForm.status === "read";
+        await createLibraryItem("books", {
             google_books_id: selectedBook.isbn || selectedBook.id,
             title: selectedBook.title,
             cover_url: selectedBook.thumbnail || null,
             author: selectedBook.author || null,
-            year: yearMatch ? parseInt(yearMatch[0]) : null,
+            year: year ? Number(year) : null,
             description: selectedBook.description || null,
             rating: addForm.rating || null,
             status: addForm.status,
             note: addForm.note || null,
-            read_at: addForm.status === 'read' ? new Date().toISOString() : null,
-        }).select().single();
-
-        if (book && addForm.selectedTags.length > 0) {
-            await supabase.from('book_tags').insert(
-                addForm.selectedTags.map(tagId => ({ book_id: book.id, tag_id: tagId }))
-            );
-        }
-
-        if (book && addForm.status === 'read') {
-            await supabase.from('reading_history').insert({
-                book_id: book.id,
-                user_id: user.id,
-                read_at: new Date().toISOString(),
-                note: null,
-            });
-        }
-
-        setSelectedBook(null);
-        resetAddForm();
-        setAdding(false);
+            read_at: read ? new Date().toISOString() : null,
+        }, read);
     }
 
     async function addMusic() {
         if (!selectedMusic) return;
-        setAdding(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const yearMatch = selectedMusic.releaseDate?.match(/\d{4}/);
-        const { data: created } = await supabase.from('music').insert({
-            user_id: user.id,
+        const year = selectedMusic.releaseDate?.match(/\d{4}/)?.[0];
+        const listened = addForm.status === "listened";
+        await createLibraryItem("music", {
             spotify_id: selectedMusic.id,
             title: selectedMusic.title,
             artwork_url: selectedMusic.image || null,
             artist: selectedMusic.artist || null,
-            year: yearMatch ? parseInt(yearMatch[0], 10) : null,
+            year: year ? Number(year) : null,
             type: selectedMusic.type,
             rating: addForm.rating || null,
             status: addForm.status,
             note: addForm.note || null,
-            listened_at: addForm.status === 'listened' ? new Date().toISOString() : null,
-        }).select('id').single();
-
-        if (created && addForm.selectedTags.length > 0) {
-            await supabase.from('music_tags').insert(
-                addForm.selectedTags.map(tagId => ({ music_id: created.id, tag_id: tagId }))
-            );
-        }
-
-        if (created && addForm.status === 'listened') {
-            await supabase.from('listening_history').insert({
-                music_id: created.id,
-                user_id: user.id,
-                listened_at: new Date().toISOString(),
-                note: null,
-            });
-        }
-
-        setSelectedMusic(null);
-        resetAddForm();
-        setAdding(false);
+            listened_at: listened ? new Date().toISOString() : null,
+        }, listened);
     }
 
     function resetAddForm() {
-        setAddForm({ rating: 0, status: 'wishlist', note: '', selectedTags: [], watchedEpisode: 0 });
+        setAddForm({ rating: 0, status: "wishlist", note: "", selectedTags: [], watchedEpisode: 0 });
     }
 
     return (

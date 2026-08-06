@@ -1,60 +1,258 @@
 # MediaVault
 
-映画・TV番組・本・音楽の鑑賞記録を管理する Web アプリケーションです。
+映画・TV・本・音楽を自分用に記録する、Cloudflare上で動くセルフホスト型Webアプリです。
 
-## Quick Start
+低頻度の個人利用でも非アクティブ停止を気にせず使えるよう、アプリはCloudflare Workers、データはD1、ログインはCloudflare Access + Google OAuthで構成しています。1つの環境へ複数ユーザーを許可できますが、データはAccess JWTのユーザーIDごとに分離されます。
+
+## 現在の状態
+
+アプリ基盤のCloudflare移行は完了しています。
+
+- Next.js 16をOpenNextでCloudflare Workersへデプロイ済み
+- D1 schemaとmigrationを適用済み
+- Google OAuthをCloudflare Accessへ接続済み
+- 許可メールアドレスだけがログインできるAccess Policyを設定済み
+- Worker内でもAccess JWTの署名・issuer・audienceを検証
+- CRUD、タグ、履歴、import/exportをD1 Repository経由へ移行
+- スマホ向けレイアウト、モーダル、サイドバー、ズーム、タッチ操作を改善
+- 認証済みHTMLとAPIレスポンスをService Workerのキャッシュ対象から除外
+
+現在の本番環境には初回ユーザーが作成されていますが、旧環境の作品データはまだimportしていません。旧データが必要な場合は「既存データの移行」を実行してください。
+
+> **OpenNext互換性:** Next.js 16ではproxy.tsが推奨されていますが、最新の@opennextjs/cloudflare 1.20.2はNode.js Proxyをまだデプロイできません。そのため現在はEdge middleware.tsを使用しています。OpenNextがNode.js Proxyへ対応した時点で移行します。
+
+## 構成
+
+- Next.js 16 / React 19
+- OpenNext for Cloudflare
+- Cloudflare Workers
+- Cloudflare D1（SQLite互換）
+- Cloudflare Access + Google OAuth
+- PWA
+
+ブラウザからD1を直接操作しません。すべてのデータ操作は認証必須のRoute Handlerを通り、`owner_id`には検証済みAccess JWTの`sub`だけを使用します。リクエストから任意のowner IDを指定することはできません。
+
+## ローカル開発
+
+### 1. 依存関係をインストール
 
 ```bash
-git clone https://github.com/shun927/MediaVault.git
-cd MediaVault
 npm install
+```
+
+### 2. 開発用変数を作成
+
+macOS / Linux:
+
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .dev.vars.example .dev.vars
+```
+
+`.dev.vars`の`DEV_AUTH_SUB`と`DEV_AUTH_EMAIL`はローカル開発専用の固定ユーザーです。本番では認証迂回に使用されません。
+
+作品検索を使う場合は、利用するサービスの値だけ設定します。
+
+- `TMDB_API_KEY`: 映画・TV検索
+- `RAKUTEN_APP_ID` / `RAKUTEN_ACCESS_KEY`: 書籍検索
+- `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET`: 音楽検索
+- `SPOTIFY_MARKET`: Spotifyのマーケット。既定値は`JP`
+
+### 3. ローカルD1を初期化して起動
+
+```bash
+npm run db:migrate:local
 npm run dev
 ```
 
-`http://localhost:3000` にアクセスしてください。
+通常は `http://localhost:3000` で確認できます。ローカルD1は`.wrangler/`内に作成され、Gitには含まれません。
 
-## 機能
+## 自分のCloudflareへデプロイ
 
-### Phase 1 (MVP)
+### 1. Wranglerへログイン
 
-- **認証**: Google OAuth によるログイン
-- **作品検索**: TMDB（映画・TV・アニメ）/ 楽天ブックス（本）の API から検索・選択
-- **音楽検索（Phase 2）**: Spotify API（OAuth2 Client Credentials）で曲・アルバム検索
-- **ISBN バーコード読み取り**: Books タブでカメラを使って ISBN バーコードを読み取り、そのまま書籍検索
-- **TV / アニメ対応**: 映画と TV を統合検索し、メディアタイプバッジ（Film / TV）で区別。シーズン・エピソード数の表示、視聴進捗バーで追跡
-- **記録管理**: 作品の追加・編集・削除
-- **評価・感想**: 5段階評価 + テキストメモ
-- **ステータス管理**: 鑑賞済み / 視聴中 / ウィッシュリスト
-- **タグ付け**: 自由にタグを作成・色分け・付与
-- **検索・フィルター**: タイトル / 評価 / ステータス / タグで絞り込み
-- **再鑑賞・再読の記録**: 日付とメモ付きで鑑賞・読書履歴を蓄積
-- **エクスポート / インポート**: JSON 形式でバックアップ・復元
-- **PWA 対応**: スマホにインストール可能
+```bash
+npx wrangler login
+```
 
-## スクリーンショット
+### 2. D1を作成
 
-UI が確定次第、ここに画像を追加します。
+```bash
+npx wrangler d1 create mediavault
+```
 
-## ドキュメント
+表示された`database_id`を`wrangler.jsonc`へ設定します。binding名はアプリが参照する`DB`のまま変更しないでください。
 
-- 技術要件 / セットアップ / DB テーブル構成 / カスタマイズ / ロードマップ:
-  `docs/TECH_REQUIREMENTS_AND_ROADMAP.md`
+```jsonc
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "mediavault",
+    "database_id": "ここを自分のdatabase_idへ変更",
+    "migrations_dir": "d1/migrations"
+  }
+]
+```
 
-## DB Migration (Unified Procedure)
+続いてremote D1へschemaを適用します。
 
-DB マイグレーションは、Supabase SQL Editor で以下の順番で実行します。
+```bash
+npm run db:migrate:remote
+```
 
-1. `supabase/migrations/001_base.sql`（base schema）
-2. `supabase/migrations/002_tv.sql`（TV/episode extension）
-3. `supabase/migrations/003_music.sql`（music/listening_history extension）
+### 3. いったんWorkerをデプロイ
 
-注意:
-- すべて冪等（`IF NOT EXISTS` ベース）なので、再実行しても壊れない前提です。
-- 新しいマイグレーションを追加する場合は、上記の順序を崩さずに末尾へ追記してください。
+```bash
+npm run deploy
+```
 
-## ISBN バーコード読み取りの注意
+表示された `https://<worker-name>.<subdomain>.workers.dev` を控えます。
 
-- 実装はブラウザの `BarcodeDetector` と `getUserMedia` を利用しています。
-- 主に Chromium 系ブラウザ（Chrome / Edge）で動作します。
-- 未対応ブラウザでは手入力検索をご利用ください。
-- 本番環境でカメラを使うには HTTPS が必要です（`localhost` は例外）。
+### 4. Google OAuthを作成
+
+Google Cloud Consoleで「ウェブ アプリケーション」のOAuthクライアントを作成します。
+
+- 承認済みのJavaScript生成元: `https://<team-name>.cloudflareaccess.com`
+- 承認済みのリダイレクトURI: `https://<team-name>.cloudflareaccess.com/cdn-cgi/access/callback`
+
+発行されたClient IDとClient Secretは公開ファイルへ保存しないでください。
+
+### 5. Cloudflare Accessを設定
+
+Cloudflare Zero Trust Dashboardで次を設定します。
+
+1. `Integrations > Identity providers`でGoogleを追加し、OAuthのClient IDとSecretを登録
+2. `Access controls > Applications`でSelf-hosted applicationを作成
+3. 宛先としてデプロイしたWorkerを選択
+4. Allow PolicyのIncludeを自分のメールアドレスなど、許可するユーザーだけに限定
+5. ApplicationのIdentity providerをGoogleだけに限定
+6. ログイン方法がGoogleだけならInstant authenticationを有効化
+7. ApplicationのAUDとZero Trustのteam domainを控える
+
+一般公開のユーザー登録はありません。各デプロイの管理者がAccess Policyで利用者を管理します。
+
+### 6. Worker secretsを登録
+
+必須:
+
+```bash
+npx wrangler secret put TEAM_DOMAIN
+npx wrangler secret put POLICY_AUD
+```
+
+- `TEAM_DOMAIN`: `https://<team-name>.cloudflareaccess.com`
+- `POLICY_AUD`: Access ApplicationのAUD
+
+外部検索を使用する場合だけ追加します。
+
+```bash
+npx wrangler secret put TMDB_API_KEY
+npx wrangler secret put RAKUTEN_APP_ID
+npx wrangler secret put RAKUTEN_ACCESS_KEY
+npx wrangler secret put SPOTIFY_CLIENT_ID
+npx wrangler secret put SPOTIFY_CLIENT_SECRET
+```
+
+最後に再デプロイします。
+
+```bash
+npm run deploy
+```
+
+Workerへアクセスし、Googleログイン後にDashboardが表示されればセットアップ完了です。初回アクセス時にD1の`users`へユーザーが作成されます。
+
+## 既存データの移行
+
+旧MediaVaultのSettingsからexport v1 JSONを保存し、D1向けに検証・正規化します。
+
+```bash
+npm run import:prepare -- old-export.json mediavault-d1-import.json
+```
+
+次の順で移行します。
+
+1. 新しいWorkerへGoogleログインしてD1ユーザーを作成
+2. Settingsを開く
+3. 正規化済みの`mediavault-d1-import.json`をimport
+4. 映画・本・音楽・タグ・履歴・評価・日付を確認
+5. 新環境からもう一度exportし、旧exportと件数を比較
+
+importはD1 batchで実行します。途中で失敗した場合に一部だけを保存しません。旧環境は移行確認が終わるまで保持し、問題がなければバックアップ後に廃止してください。
+
+## よく使うコマンド
+
+| コマンド | 内容 |
+| --- | --- |
+| `npm run dev` | Next.js開発サーバーを起動 |
+| `npm run preview` | OpenNextのWorkerをローカルプレビュー |
+| `npm run deploy` | buildしてCloudflare Workersへデプロイ |
+| `npm run deploy:dry` | Worker deployのdry run |
+| `npm run db:migrate:local` | ローカルD1へmigrationを適用 |
+| `npm run db:migrate:remote` | remote D1へmigrationを適用 |
+| `npm run db:export` | remote D1をSQLバックアップ |
+| `npm run import:prepare -- input.json output.json` | export v1を検証・正規化 |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript型チェック |
+| `npm test` | Vitest |
+| `npm run test:e2e` | Playwright E2E |
+| `npm run build` | Next.js production build |
+
+## バックアップと運用
+
+remote D1のSQLバックアップ:
+
+```bash
+npm run db:export
+```
+
+Cloudflare DashboardのD1 MetricsでRows read、Rows written、Storageを定期的に確認してください。個人利用で無料枠を超えた場合は、その時点でWorkers Paidを検討します。
+
+本番ログはWranglerでも確認できます。
+
+```bash
+npx wrangler tail
+```
+
+## リリース前チェック
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+```
+
+最低限、320px幅、一般的なスマホ縦画面、スマホ横画面、タブレット幅で横スクロールや操作不能なモーダルがないことも確認してください。
+
+## トラブルシューティング
+
+### Workerへアクセスすると403になる
+
+- Access Policyのメールアドレスを確認
+- ApplicationにGoogle IdPが割り当てられているか確認
+- `TEAM_DOMAIN`と`POLICY_AUD`を登録し直して再デプロイ
+- Access ApplicationのAUDとWorker secretが一致しているか確認
+
+### `no such table`が表示される
+
+対象D1へmigrationが未適用です。
+
+```bash
+npm run db:migrate:remote
+```
+
+ローカル開発なら`db:migrate:local`を使用します。
+
+### 外部検索だけ失敗する
+
+対応するAPIキーが設定されているか確認します。映画・本・音楽の検索キーはそれぞれ独立しているため、未設定のサービスだけ利用できません。
+
+### ログアウト後も古い画面が見える
+
+最新版を再デプロイしたうえで、古いService Workerが残っている場合はブラウザのサイトデータを一度削除してください。現在のService Workerは認証済みHTMLとAPIレスポンスをキャッシュしません。

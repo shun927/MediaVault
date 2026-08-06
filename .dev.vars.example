@@ -1,0 +1,11 @@
+NEXTJS_ENV=development
+DEV_AUTH_SUB=local-user
+DEV_AUTH_EMAIL=local@example.com
+TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+POLICY_AUD=replace-with-your-access-application-audience
+TMDB_API_KEY=
+RAKUTEN_APP_ID=
+RAKUTEN_ACCESS_KEY=
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
+SPOTIFY_MARKET=JP

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Book, Movie, Music } from '@/lib/types';
 import { getRawStatusesForSidebarFilter, isSidebarStatusFilter, SIDEBAR_STATUS_OPTIONS } from '@/lib/status';
 
@@ -32,11 +32,11 @@ function StatusPageContent() {
 
     useEffect(() => {
         async function load() {
-            const supabase = createClient();
+            const dataClient = createClient();
             const [{ data: movieData }, { data: bookData }, { data: musicData }] = await Promise.all([
-                supabase.from('movies').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
-                supabase.from('books').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
-                supabase.from('music').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
+                dataClient.from('movies').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
+                dataClient.from('books').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
+                dataClient.from('music').select('*').in('status', allowedStatuses).order('updated_at', { ascending: false }),
             ]);
 
             setMovies((movieData as Movie[]) || []);

@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Movie, Tag } from '@/lib/types';
 import { MOVIE_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
@@ -19,8 +19,8 @@ export default function MoviesPage() {
     const [sort, setSort] = useState('created_at');
 
     const loadMovies = useCallback(async () => {
-        const supabase = createClient();
-        let query = supabase.from('movies').select('*').order(sort, { ascending: sort === 'title' });
+        const dataClient = createClient();
+        let query = dataClient.from('movies').select('*').order(sort, { ascending: sort === 'title' });
 
         if (filter.status) query = query.eq('status', filter.status);
         if (filter.search) query = query.ilike('title', `%${filter.search}%`);
@@ -30,27 +30,27 @@ export default function MoviesPage() {
 
         // タグフィルター
         if (filter.tagId) {
-            const { data: movieTagData } = await supabase.from('movie_tags').select('movie_id').eq('tag_id', filter.tagId);
-            const movieIds = new Set((movieTagData || []).map(mt => mt.movie_id));
+            const { data: movieTagData } = await dataClient.from('movie_tags').select('movie_id').eq('tag_id', filter.tagId);
+            const movieIds = new Set((movieTagData || []).map((mt: { tag_id: string; movie_id?: string }) => mt.movie_id));
             movieList = movieList.filter(m => movieIds.has(m.id));
         }
 
         // 映画ごとのタグを取得
         if (movieList.length > 0) {
             const movieIds = movieList.map(m => m.id);
-            const { data: movieTagsData } = await supabase
+            const { data: movieTagsData } = await dataClient
                 .from('movie_tags')
                 .select('movie_id, tag_id')
                 .in('movie_id', movieIds);
 
-            const { data: allTags } = await supabase.from('tags').select('*');
+            const { data: allTags } = await dataClient.from('tags').select('*');
 
             const tagMap = new Map((allTags as Tag[] || []).map(t => [t.id, t]));
             movieList = movieList.map(movie => ({
                 ...movie,
                 tags: (movieTagsData || [])
-                    .filter(mt => mt.movie_id === movie.id)
-                    .map(mt => tagMap.get(mt.tag_id))
+                    .filter((mt: { tag_id: string; movie_id?: string }) => mt.movie_id === movie.id)
+                    .map((mt: { tag_id: string; movie_id?: string }) => tagMap.get(mt.tag_id))
                     .filter(Boolean) as Tag[],
             }));
         }

@@ -9,7 +9,7 @@ import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Movie, Tag, ViewingHistory } from '@/lib/types';
 import { MOVIE_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
@@ -35,17 +35,17 @@ export default function MovieDetailPage() {
     const [savingHistory, setSavingHistory] = useState(false);
 
     const loadMovie = useCallback(async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from('movies').select('*').eq('id', params.id).single();
+        const dataClient = createClient();
+        const { data } = await dataClient.from('movies').select('*').eq('id', params.id).single();
         if (!data) { router.push('/movies'); return; }
 
         const [{ data: movieTags }, { data: historyData }, { data: allTagData }] = await Promise.all([
-            supabase.from('movie_tags').select('tag_id').eq('movie_id', params.id),
-            supabase.from('viewing_history').select('*').eq('movie_id', params.id).order('watched_at', { ascending: false }),
-            supabase.from('tags').select('*').order('name'),
+            dataClient.from('movie_tags').select('tag_id').eq('movie_id', params.id),
+            dataClient.from('viewing_history').select('*').eq('movie_id', params.id).order('watched_at', { ascending: false }),
+            dataClient.from('tags').select('*').order('name'),
         ]);
 
-        const selectedTagIds = (movieTags || []).map(mt => mt.tag_id);
+        const selectedTagIds = (movieTags || []).map((mt: { tag_id: string; movie_id?: string }) => mt.tag_id);
         const availableTags = (allTagData as Tag[]) || [];
         setAllTags(availableTags);
         setEditMeta({
@@ -70,63 +70,39 @@ export default function MovieDetailPage() {
     async function handleSaveMeta() {
         if (!movie) return;
         setSavingMeta(true);
-        const supabase = createClient();
-        const movingToWatched = movie.status !== 'watched' && editMeta.status === 'watched';
-        await supabase.from('movies').update({
-            rating: editMeta.rating || null,
-            status: editMeta.status,
-            note: editMeta.note.trim() || null,
-            watched_at: editMeta.status === 'watched' ? new Date().toISOString() : movie.watched_at,
-            number_of_episodes: movie.media_type === 'tv' ? (editMeta.numberOfEpisodes || null) : null,
-            watched_episode: movie.media_type === 'tv' ? (editMeta.watchedEpisode || null) : null,
-            updated_at: new Date().toISOString(),
-        }).eq('id', movie.id);
-
-        await supabase.from('movie_tags').delete().eq('movie_id', movie.id);
-        if (editMeta.selectedTags.length > 0) {
-            await supabase.from('movie_tags').insert(
-                editMeta.selectedTags.map(tagId => ({ movie_id: movie.id, tag_id: tagId }))
-            );
-        }
-
-        if (movingToWatched) {
-            const today = new Date().toISOString().slice(0, 10);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: existingToday } = await supabase
-                    .from('viewing_history')
-                    .select('id, watched_at')
-                    .eq('movie_id', movie.id)
-                    .gte('watched_at', `${today}T00:00:00.000Z`)
-                    .lt('watched_at', `${today}T23:59:59.999Z`)
-                    .limit(1);
-
-                if (!existingToday || existingToday.length === 0) {
-                    await supabase.from('viewing_history').insert({
-                        movie_id: movie.id,
-                        user_id: user.id,
-                        watched_at: new Date().toISOString(),
-                        note: null,
-                    });
-                }
-            }
-        }
-
+        const movingToWatched = movie.status !== "watched" && editMeta.status === "watched";
+        const response = await fetch(`/api/library/movies/${movie.id}/metadata`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                values: {
+                    rating: editMeta.rating || null,
+                    status: editMeta.status,
+                    note: editMeta.note.trim() || null,
+                    watched_at: editMeta.status === "watched" ? new Date().toISOString() : movie.watched_at,
+                    number_of_episodes: movie.media_type === "tv" ? editMeta.numberOfEpisodes || null : null,
+                    watched_episode: movie.media_type === "tv" ? editMeta.watchedEpisode || null : null,
+                },
+                tagIds: editMeta.selectedTags,
+                addHistory: movingToWatched,
+            }),
+        });
         setSavingMeta(false);
+        if (!response.ok) { alert("Save failed. No changes were committed."); return; }
         await loadMovie();
     }
 
     async function handleAddHistory() {
         if (!movie) return;
         setSavingHistory(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const dataClient = createClient();
+        const { data: { user } } = await dataClient.auth.getUser();
         if (!user) {
             setSavingHistory(false);
             return;
         }
 
-        await supabase.from('viewing_history').insert({
+        await dataClient.from('viewing_history').insert({
             movie_id: movie.id,
             user_id: user.id,
             watched_at: new Date(historyForm.date).toISOString(),
@@ -140,8 +116,8 @@ export default function MovieDetailPage() {
     }
 
     async function handleDeleteHistory(historyId: string) {
-        const supabase = createClient();
-        await supabase.from('viewing_history').delete().eq('id', historyId);
+        const dataClient = createClient();
+        await dataClient.from('viewing_history').delete().eq('id', historyId);
         await loadMovie();
     }
 
@@ -154,10 +130,8 @@ export default function MovieDetailPage() {
 
     async function handleDelete() {
         if (!confirm('Delete this title from your collection?')) return;
-        const supabase = createClient();
-        await supabase.from('viewing_history').delete().eq('movie_id', params.id);
-        await supabase.from('movie_tags').delete().eq('movie_id', params.id);
-        await supabase.from('movies').delete().eq('id', params.id);
+        const dataClient = createClient();
+        await dataClient.from('movies').delete().eq('id', params.id);
         router.push('/movies');
     }
 
@@ -387,7 +361,7 @@ export default function MovieDetailPage() {
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <p className="text-xs text-[var(--text-muted)] self-center">Use "Save Changes" below to add this log.</p>
+                                        <p className="text-xs text-[var(--text-muted)] self-center">Use &quot;Save Changes&quot; below to add this log.</p>
                                         <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
                                     </div>
                                 </div>

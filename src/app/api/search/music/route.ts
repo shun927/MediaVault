@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authenticateSearchRequest, forbidden, upstreamSignal } from '@/lib/auth';
 
 const SPOTIFY_TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
 const SPOTIFY_SEARCH_ENDPOINT = 'https://api.spotify.com/v1/search';
@@ -84,13 +85,14 @@ async function getSpotifyAccessToken(clientId: string, clientSecret: string) {
         },
         body: 'grant_type=client_credentials',
         cache: 'no-store',
+        signal: AbortSignal.timeout(8_000),
     });
 
     if (!res.ok) {
         throw new Error(`Spotify token error: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data = await res.json() as { expires_in?: number; access_token: string };
     const expiresIn = typeof data.expires_in === 'number' ? data.expires_in : 3600;
     cachedToken = {
         accessToken: data.access_token,
@@ -100,15 +102,21 @@ async function getSpotifyAccessToken(clientId: string, clientSecret: string) {
 }
 
 export async function GET(request: NextRequest) {
-    const query = request.nextUrl.searchParams.get('q');
+    let env;
+    try { ({ env } = await authenticateSearchRequest(request, 'music')); } catch (error) {
+        if (error instanceof Error && error.message === 'Rate limit exceeded') return NextResponse.json({ error: error.message }, { status: 429 });
+        return forbidden(error);
+    }
+    const query = request.nextUrl.searchParams.get('q')?.trim();
     const spotifyId = request.nextUrl.searchParams.get('spotifyId');
     const spotifyType = request.nextUrl.searchParams.get('spotifyType');
+    if (query && query.length > 200) return NextResponse.json({ error: 'Query is too long' }, { status: 400 });
     if (!query && !(spotifyId && (spotifyType === 'track' || spotifyType === 'album'))) {
         return NextResponse.json({ items: [] });
     }
 
-    const clientId = process.env.SPOTIFY_CLIENT_ID;
-    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    const clientId = env.SPOTIFY_CLIENT_ID;
+    const clientSecret = env.SPOTIFY_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
         return NextResponse.json({ items: [], error: 'Spotify credentials not configured' });
     }
@@ -121,6 +129,7 @@ export async function GET(request: NextRequest) {
             const detailRes = await fetch(`https://api.spotify.com/v1/${spotifyType}s/${encodeURIComponent(spotifyId)}`, {
                 headers: { Authorization: `Bearer ${accessToken}` },
                 cache: 'no-store',
+                signal: upstreamSignal(request),
             });
             if (!detailRes.ok) {
                 return NextResponse.json({ items: [], error: `Spotify API error: ${detailRes.status}` }, { status: detailRes.status });
@@ -130,7 +139,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ items: [item] });
         }
 
-        const market = process.env.SPOTIFY_MARKET || 'JP';
+        const market = env.SPOTIFY_MARKET || 'JP';
         const params = new URLSearchParams({
             q: safeQuery,
             type: 'track,album',
@@ -141,6 +150,7 @@ export async function GET(request: NextRequest) {
         const res = await fetch(`${SPOTIFY_SEARCH_ENDPOINT}?${params}`, {
             headers: { Authorization: `Bearer ${accessToken}` },
             cache: 'no-store',
+        signal: AbortSignal.timeout(8_000),
         });
 
         if (!res.ok) {

@@ -7,7 +7,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Music } from '@/lib/types';
 import { MUSIC_STATUS_OPTIONS } from '@/lib/status';
 
@@ -18,8 +18,8 @@ export default function MusicPage() {
     const [sort, setSort] = useState('created_at');
 
     const loadMusic = useCallback(async () => {
-        const supabase = createClient();
-        let query = supabase.from('music').select('*').order(sort, { ascending: sort === 'title' });
+        const dataClient = createClient();
+        let query = dataClient.from('music').select('*').order(sort, { ascending: sort === 'title' });
 
         if (filter.status) query = query.eq('status', filter.status);
         if (filter.search) query = query.ilike('title', `%${filter.search}%`);

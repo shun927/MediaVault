@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authenticateSearchRequest, forbidden, upstreamSignal } from '@/lib/auth';
 
 interface TMDBRawResult {
     id: number;
@@ -17,18 +18,25 @@ interface TMDBRawResult {
 }
 
 export async function GET(request: NextRequest) {
-    const query = request.nextUrl.searchParams.get('q');
+    let env;
+    try { ({ env } = await authenticateSearchRequest(request, 'movies')); } catch (error) {
+        if (error instanceof Error && error.message === 'Rate limit exceeded') return NextResponse.json({ error: error.message }, { status: 429 });
+        return forbidden(error);
+    }
+    const query = request.nextUrl.searchParams.get('q')?.trim();
     if (!query) return NextResponse.json({ results: [] });
+    if (query.length > 200) return NextResponse.json({ error: 'Query is too long' }, { status: 400 });
 
-    const apiKey = process.env.TMDB_API_KEY;
+    const apiKey = env.TMDB_API_KEY;
     if (!apiKey) return NextResponse.json({ results: [], error: 'TMDB API key not configured' });
 
     try {
         const res = await fetch(
             `https://api.themoviedb.org/3/search/multi?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=ja-JP&page=1`,
-            { next: { revalidate: 300 } }
+            { cache: 'no-store', signal: upstreamSignal(request) }
         );
-        const data = await res.json();
+        if (!res.ok) return NextResponse.json({ results: [], error: 'TMDB upstream error' }, { status: 502 });
+        const data = await res.json() as { results?: TMDBRawResult[] };
 
         // movie と tv のみをフィルタリングし、正規化
         const results = ((data.results || []) as TMDBRawResult[])

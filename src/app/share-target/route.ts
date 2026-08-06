@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveShareIntent } from '@/lib/share-target';
+import { authenticateRequest, forbidden } from '@/lib/auth';
 
 function redirectToSearch(request: NextRequest, params: URLSearchParams) {
     const url = request.nextUrl.clone();
@@ -9,6 +10,7 @@ function redirectToSearch(request: NextRequest, params: URLSearchParams) {
 }
 
 export async function POST(request: NextRequest) {
+    try { await authenticateRequest(request); } catch (error) { return forbidden(error); }
     const formData = await request.formData();
     const title = formData.get('title')?.toString() || '';
     const text = formData.get('text')?.toString() || '';
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+    try { await authenticateRequest(request); } catch (error) { return forbidden(error); }
     const title = request.nextUrl.searchParams.get('title');
     const text = request.nextUrl.searchParams.get('text');
     const url = request.nextUrl.searchParams.get('url');

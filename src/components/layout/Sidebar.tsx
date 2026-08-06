@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase';
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/data-client';
 import { SIDEBAR_STATUS_OPTIONS, isSidebarStatusFilter } from '@/lib/status';
 
 interface SidebarProps {
@@ -16,14 +16,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const searchParams = useSearchParams();
     const [counts, setCounts] = useState({ films: 0, books: 0, music: 0 });
     const [isShortViewport, setIsShortViewport] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
+    const asideRef = useRef<HTMLElement>(null);
+    const returnFocusRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
         async function loadCounts() {
-            const supabase = createClient();
+            const dataClient = createClient();
             const [{ count: films }, { count: books }, { count: music }] = await Promise.all([
-                supabase.from('movies').select('*', { count: 'exact', head: true }),
-                supabase.from('books').select('*', { count: 'exact', head: true }),
-                supabase.from('music').select('*', { count: 'exact', head: true }),
+                dataClient.from('movies').select('*', { count: 'exact', head: true }),
+                dataClient.from('books').select('*', { count: 'exact', head: true }),
+                dataClient.from('music').select('*', { count: 'exact', head: true }),
             ]);
             setCounts({ films: films || 0, books: books || 0, music: music || 0 });
         }
@@ -39,6 +42,33 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         return () => mediaQuery.removeEventListener('change', apply);
     }, []);
 
+    useEffect(() => {
+        const desktop = window.matchMedia('(min-width: 1024px)');
+        const syncDesktop = () => setIsDesktop(desktop.matches);
+        syncDesktop();
+        desktop.addEventListener('change', syncDesktop);
+        return () => desktop.removeEventListener('change', syncDesktop);
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen || isDesktop) return;
+        returnFocusRef.current = document.activeElement as HTMLElement;
+        const aside = asideRef.current;
+        const items = () => Array.from(aside?.querySelectorAll<HTMLElement>('button,a[href],[tabindex]:not([tabindex="-1"])') || []);
+        items()[0]?.focus();
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+            if (event.key !== 'Tab') return;
+            const focusable = items();
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => { document.removeEventListener('keydown', onKeyDown); returnFocusRef.current?.focus(); };
+    }, [isOpen, isDesktop, onClose]);
     const homeActive = pathname === '/dashboard';
     const activeStatusParam = pathname.startsWith('/status') ? searchParams.get('view') : null;
     const activeStatus = isSidebarStatusFilter(activeStatusParam)
@@ -50,18 +80,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     return (
         <>
             {isOpen && (
-                <div className="fixed inset-0 bg-black/70 z-40 lg:hidden" onClick={onClose} />
+                <button type="button" className="fixed inset-0 bg-black/70 z-40 lg:hidden" onClick={onClose} aria-label="メニューを閉じる" />
             )}
 
             <aside
-                className={`fixed top-0 left-0 h-full z-50 flex flex-col transition-transform duration-200 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                ref={asideRef}
+                role="dialog"
+                aria-modal={!isDesktop ? true : undefined}
+                aria-label="メインメニュー"
+                inert={!isOpen && !isDesktop ? true : undefined}
+                className={`fixed top-0 left-0 h-full z-50 flex flex-col overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)] transition-transform duration-200 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
                 style={{
                     width: '240px',
                     background: 'var(--sidebar-bg)',
                     borderRight: '1px solid var(--sidebar-border)',
                 }}
             >
-                <div className="px-7 pt-9 pb-6">
+                <div className="px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 flex items-start justify-between gap-2">
+                    <button type="button" onClick={onClose} className="touch-target order-2 inline-flex lg:hidden items-center justify-center text-[var(--sidebar-link)]" aria-label="メニューを閉じる">×</button>
                     <p className="text-[50px] leading-[0.85] font-extrabold tracking-[-0.02em]" style={{ color: 'var(--sidebar-brand)', fontFamily: 'Inter, sans-serif' }}>
                         MEDIA
                         <br />
@@ -73,7 +109,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <Link
                         href="/dashboard"
                         onClick={onClose}
-                        className="flex items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
+                        className="flex min-h-11 items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
                         style={getSidebarItemStyle(homeActive, true)}
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -86,7 +122,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <Link
                         href="/search"
                         onClick={onClose}
-                        className="flex items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
+                        className="flex min-h-11 items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
                         style={getSidebarItemStyle(pathname.startsWith('/search'), true)}
                     >
                         <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -167,7 +203,7 @@ function SidebarLink({
         <Link
             href={href}
             onClick={onClose}
-            className="flex items-center justify-between py-2 px-3 rounded-[10px] no-underline transition-colors"
+            className="flex min-h-11 items-center justify-between py-2 px-3 rounded-[10px] no-underline transition-colors"
             style={getSidebarItemStyle(active)}
         >
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px', fontWeight: 600, lineHeight: 1.2 }}>{label}</span>
@@ -188,7 +224,7 @@ function SettingsLink({ active, onClose }: { active: boolean; onClose: () => voi
         <Link
             href="/settings"
             onClick={onClose}
-            className="flex items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
+            className="flex min-h-11 items-center gap-3 py-2 px-3 rounded-[10px] no-underline transition-colors"
             style={getSidebarItemStyle(active, true)}
         >
             <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

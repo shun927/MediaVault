@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Book, Movie, Music } from '@/lib/types';
 import UnifiedItemCard from '@/components/media/UnifiedItemCard';
 import styles from './DashboardPage.module.css';
@@ -32,14 +32,14 @@ export default function DashboardPage() {
 
     useEffect(() => {
         async function loadData() {
-            const supabase = createClient();
+            const dataClient = createClient();
             const [moviesRes, booksRes, musicRes, moviesCount, booksCount, musicCount] = await Promise.all([
-                supabase.from('movies').select('*').order('created_at', { ascending: false }).limit(30),
-                supabase.from('books').select('*').order('created_at', { ascending: false }).limit(30),
-                supabase.from('music').select('*').order('created_at', { ascending: false }).limit(30),
-                supabase.from('movies').select('*', { count: 'exact', head: true }),
-                supabase.from('books').select('*', { count: 'exact', head: true }),
-                supabase.from('music').select('*', { count: 'exact', head: true }),
+                dataClient.from('movies').select('*').order('created_at', { ascending: false }).limit(30),
+                dataClient.from('books').select('*').order('created_at', { ascending: false }).limit(30),
+                dataClient.from('music').select('*').order('created_at', { ascending: false }).limit(30),
+                dataClient.from('movies').select('*', { count: 'exact', head: true }),
+                dataClient.from('books').select('*', { count: 'exact', head: true }),
+                dataClient.from('music').select('*', { count: 'exact', head: true }),
             ]);
 
             const movieItems = ((moviesRes.data as Movie[]) || []).map((movie) => ({

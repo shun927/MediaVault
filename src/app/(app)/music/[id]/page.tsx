@@ -10,7 +10,7 @@ import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { ListeningHistory, Music, Tag } from '@/lib/types';
 import { MUSIC_STATUS_OPTIONS } from '@/lib/status';
 
@@ -29,17 +29,17 @@ export default function MusicDetailPage() {
     const [savingHistory, setSavingHistory] = useState(false);
 
     const loadMusic = useCallback(async () => {
-        const supabase = createClient();
-        const { data } = await supabase.from('music').select('*').eq('id', itemId).single();
+        const dataClient = createClient();
+        const { data } = await dataClient.from('music').select('*').eq('id', itemId).single();
         if (!data) { router.push('/music'); return; }
 
         const [{ data: musicTags }, { data: historyData }, { data: allTagData }] = await Promise.all([
-            supabase.from('music_tags').select('tag_id').eq('music_id', itemId),
-            supabase.from('listening_history').select('*').eq('music_id', itemId).order('listened_at', { ascending: false }),
-            supabase.from('tags').select('*').order('name'),
+            dataClient.from('music_tags').select('tag_id').eq('music_id', itemId),
+            dataClient.from('listening_history').select('*').eq('music_id', itemId).order('listened_at', { ascending: false }),
+            dataClient.from('tags').select('*').order('name'),
         ]);
 
-        const selectedTagIds = (musicTags || []).map(mt => mt.tag_id);
+        const selectedTagIds = (musicTags || []).map((mt: { tag_id: string; music_id?: string }) => mt.tag_id);
         const availableTags = (allTagData as Tag[]) || [];
         setAllTags(availableTags);
         setEditMeta({
@@ -62,64 +62,23 @@ export default function MusicDetailPage() {
     async function handleSaveMeta(): Promise<boolean> {
         if (!item) return false;
         setSavingMeta(true);
-        const supabase = createClient();
-        const movingToListened = item.status !== 'listened' && editMeta.status === 'listened';
-        const { error: updateError } = await supabase.from('music').update({
-            rating: editMeta.rating || null,
-            status: editMeta.status,
-            note: editMeta.note.trim() || null,
-            listened_at: editMeta.status === 'listened' ? (item.listened_at || new Date().toISOString()) : item.listened_at,
-            updated_at: new Date().toISOString(),
-        }).eq('id', item.id);
-        if (updateError) {
-            alert('保存に失敗しました（作品情報）。');
-            setSavingMeta(false);
-            return false;
-        }
-
-        const { error: clearError } = await supabase.from('music_tags').delete().eq('music_id', item.id);
-        if (clearError) {
-            alert(`タグ更新に失敗しました（削除処理）。\n${clearError.message}`);
-            setSavingMeta(false);
-            return false;
-        }
-
-        const nextTagIds = Array.from(new Set(editMeta.selectedTags));
-        if (nextTagIds.length > 0) {
-            const { error: addError } = await supabase
-                .from('music_tags')
-                .insert(nextTagIds.map((tagId) => ({ music_id: item.id, tag_id: tagId })));
-            if (addError) {
-                alert(`タグ更新に失敗しました（追加処理）。\n${addError.message}`);
-                setSavingMeta(false);
-                return false;
-            }
-        }
-
-        if (movingToListened) {
-            const today = new Date().toISOString().slice(0, 10);
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data: existingToday } = await supabase
-                    .from('listening_history')
-                    .select('id, listened_at')
-                    .eq('music_id', item.id)
-                    .gte('listened_at', `${today}T00:00:00.000Z`)
-                    .lt('listened_at', `${today}T23:59:59.999Z`)
-                    .limit(1);
-
-                if (!existingToday || existingToday.length === 0) {
-                    await supabase.from('listening_history').insert({
-                        music_id: item.id,
-                        user_id: user.id,
-                        listened_at: new Date().toISOString(),
-                        note: null,
-                    });
-                }
-            }
-        }
-
+        const movingToListened = item.status !== "listened" && editMeta.status === "listened";
+        const response = await fetch(`/api/library/music/${item.id}/metadata`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                values: {
+                    rating: editMeta.rating || null,
+                    status: editMeta.status,
+                    note: editMeta.note.trim() || null,
+                    listened_at: editMeta.status === "listened" ? item.listened_at || new Date().toISOString() : item.listened_at,
+                },
+                tagIds: Array.from(new Set(editMeta.selectedTags)),
+                addHistory: movingToListened,
+            }),
+        });
         setSavingMeta(false);
+        if (!response.ok) { alert("Save failed. No changes were committed."); return false; }
         await loadMusic();
         return true;
     }
@@ -127,15 +86,15 @@ export default function MusicDetailPage() {
     async function handleAddHistory(): Promise<boolean> {
         if (!item) return false;
         setSavingHistory(true);
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const dataClient = createClient();
+        const { data: { user } } = await dataClient.auth.getUser();
         if (!user) {
             alert('ログイン情報を確認できないため履歴を追加できませんでした。');
             setSavingHistory(false);
             return false;
         }
 
-        const { error: insertError } = await supabase.from('listening_history').insert({
+        const { error: insertError } = await dataClient.from('listening_history').insert({
             music_id: item.id,
             user_id: user.id,
             listened_at: new Date(historyForm.date).toISOString(),
@@ -155,8 +114,8 @@ export default function MusicDetailPage() {
     }
 
     async function handleDeleteHistory(historyId: string) {
-        const supabase = createClient();
-        await supabase.from('listening_history').delete().eq('id', historyId);
+        const dataClient = createClient();
+        await dataClient.from('listening_history').delete().eq('id', historyId);
         await loadMusic();
     }
 
@@ -172,10 +131,8 @@ export default function MusicDetailPage() {
 
     async function handleDelete() {
         if (!confirm('Delete this title from your collection?')) return;
-        const supabase = createClient();
-        await supabase.from('listening_history').delete().eq('music_id', itemId);
-        await supabase.from('music_tags').delete().eq('music_id', itemId);
-        await supabase.from('music').delete().eq('id', itemId);
+        const dataClient = createClient();
+        await dataClient.from('music').delete().eq('id', itemId);
         router.push('/music');
     }
 
@@ -360,7 +317,7 @@ export default function MusicDetailPage() {
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <p className="text-xs text-[var(--text-muted)] self-center">Use "Save Changes" below to add this log.</p>
+                                        <p className="text-xs text-[var(--text-muted)] self-center">Use &quot;Save Changes&quot; below to add this log.</p>
                                         <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
                                     </div>
                                 </div>

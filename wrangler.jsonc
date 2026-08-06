@@ -1,0 +1,31 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "mediavault",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-08-06",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "mediavault",
+			"database_id": "96a89f0c-ad77-4723-96cf-6950ec216df6",
+			"migrations_dir": "d1/migrations"
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"head_sampling_rate": 1
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 0.05
+		}
+	}
+}

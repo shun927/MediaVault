@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             <div className="lg:ml-[var(--sidebar-width)] transition-all duration-300">
                 <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-                <main className="px-4 pb-4 pt-2 lg:p-0">
+                <main className="min-w-0 overflow-x-clip pb-[env(safe-area-inset-bottom)]">
                     {children}
                 </main>
             </div>

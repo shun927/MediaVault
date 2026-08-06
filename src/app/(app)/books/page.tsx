@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/data-client';
 import type { Book, Tag } from '@/lib/types';
 import { BOOK_STATUS_OPTIONS } from '@/lib/status';
 import Link from 'next/link';
@@ -19,8 +19,8 @@ export default function BooksPage() {
     const [sort, setSort] = useState('created_at');
 
     const loadBooks = useCallback(async () => {
-        const supabase = createClient();
-        let query = supabase.from('books').select('*').order(sort, { ascending: sort === 'title' });
+        const dataClient = createClient();
+        let query = dataClient.from('books').select('*').order(sort, { ascending: sort === 'title' });
 
         if (filter.status) query = query.eq('status', filter.status);
         if (filter.search) query = query.ilike('title', `%${filter.search}%`);
@@ -29,26 +29,26 @@ export default function BooksPage() {
         let bookList = (data as Book[]) || [];
 
         if (filter.tagId) {
-            const { data: bookTagData } = await supabase.from('book_tags').select('book_id').eq('tag_id', filter.tagId);
-            const bookIds = new Set((bookTagData || []).map(bt => bt.book_id));
+            const { data: bookTagData } = await dataClient.from('book_tags').select('book_id').eq('tag_id', filter.tagId);
+            const bookIds = new Set((bookTagData || []).map((bt: { tag_id: string; book_id?: string }) => bt.book_id));
             bookList = bookList.filter(b => bookIds.has(b.id));
         }
 
         if (bookList.length > 0) {
             const bookIds = bookList.map(b => b.id);
-            const { data: bookTagsData } = await supabase
+            const { data: bookTagsData } = await dataClient
                 .from('book_tags')
                 .select('book_id, tag_id')
                 .in('book_id', bookIds);
 
-            const { data: allTags } = await supabase.from('tags').select('*');
+            const { data: allTags } = await dataClient.from('tags').select('*');
 
             const tagMap = new Map((allTags as Tag[] || []).map(t => [t.id, t]));
             bookList = bookList.map(book => ({
                 ...book,
                 tags: (bookTagsData || [])
-                    .filter(bt => bt.book_id === book.id)
-                    .map(bt => tagMap.get(bt.tag_id))
+                    .filter((bt: { tag_id: string; book_id?: string }) => bt.book_id === book.id)
+                    .map((bt: { tag_id: string; book_id?: string }) => tagMap.get(bt.tag_id))
                     .filter(Boolean) as Tag[],
             }));
         }
