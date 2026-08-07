@@ -15,6 +15,11 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
   const dialogRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
     returnFocusRef.current = document.activeElement as HTMLElement;
@@ -25,7 +30,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     ) || []);
     focusable()[0]?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
       if (event.key !== "Tab") return;
       const items = focusable();
       if (!items.length) return;
@@ -40,7 +45,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       document.body.style.overflow = "";
       returnFocusRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
   const widths = { sm: "sm:max-w-sm", md: "sm:max-w-lg", lg: "sm:max-w-2xl" };

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/data-client';
 import type { Book, Movie, Music } from '@/lib/types';
 import UnifiedItemCard from '@/components/media/UnifiedItemCard';
@@ -108,13 +109,13 @@ export default function DashboardPage() {
         });
     }
 
-    const sortLabel = sortMode === 'recent' ? 'Recent' : sortMode === 'title' ? 'Title' : 'Rating';
+    const sortLabel = sortMode === 'recent' ? '追加が新しい順' : sortMode === 'title' ? 'タイトル順' : '評価順';
     const sortLabelShort = sortMode === 'recent' ? 'R' : sortMode === 'title' ? 'T' : '★';
 
     function toDateLabel(date: string) {
         const parsed = new Date(date);
         if (Number.isNaN(parsed.getTime())) return '--';
-        return parsed.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }).toUpperCase();
+        return parsed.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
     }
 
     return (
@@ -122,15 +123,15 @@ export default function DashboardPage() {
             <header className={styles.toolbar}>
                 <div className={styles.topStat}>
                     <div className={styles.topStatValue}>{loading ? '-' : stats.totalItems}</div>
-                    <div className={styles.topStatLabel}>TOTAL ITEMS</div>
+                    <div className={styles.topStatLabel}>登録作品</div>
                 </div>
                 <div className={styles.controls}>
                     <div className={styles.filterTabs}>
                         {([
-                            { label: 'All', value: 'all' },
-                            { label: 'Films', value: 'movie' },
-                            { label: 'Books', value: 'book' },
-                            { label: 'Music', value: 'music' },
+                            { label: 'すべて', value: 'all' },
+                            { label: '映画', value: 'movie' },
+                            { label: '本', value: 'book' },
+                            { label: '音楽', value: 'music' },
                         ] as const).map((option) => (
                             <button
                                 key={option.value}
@@ -145,7 +146,7 @@ export default function DashboardPage() {
                     <input
                         type="text"
                         className={styles.searchInput}
-                        placeholder="SEARCH..."
+                        placeholder="タイトルを検索…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -194,7 +195,10 @@ export default function DashboardPage() {
                         {[...Array(10)].map((_, i) => <div key={i} className="animate-shimmer aspect-[2/3] rounded-[6px]" />)}
                     </div>
                 ) : filteredItems.length === 0 ? (
-                    <div className={styles.empty}>No items match your filter.</div>
+                    <div className={`${styles.empty} flex flex-col items-center gap-3`}>
+                        <p>{items.length === 0 ? 'まだ作品が登録されていません' : '条件に一致する作品がありません'}</p>
+                        {items.length === 0 && <Link href="/search" className="touch-target inline-flex items-center rounded-md border border-[var(--border)] px-4 text-sm text-[var(--text-primary)] no-underline">最初の作品を追加</Link>}
+                    </div>
                 ) : (
                     <div className={`${styles.grid} ${viewMode === 'compact' ? styles.gridCompact : ''}`}>
                         {filteredItems.map((item) => (
@@ -208,6 +212,7 @@ export default function DashboardPage() {
                                     rating={item.rating}
                                     preserveImage={item.type === 'music'}
                                     compact={viewMode === 'compact'}
+                                    quickLog={{ kind: item.type === 'movie' ? 'movies' : item.type === 'book' ? 'books' : 'music', itemId: item.id }}
                                 />
                             </div>
                         ))}

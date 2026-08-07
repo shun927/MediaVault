@@ -1,19 +1,19 @@
 export const STATUS_LABELS: Record<string, string> = {
-    watched: 'Completed',
-    read: 'Completed',
-    listened: 'Completed',
-    watching: 'In Progress',
-    reading: 'In Progress',
-    listening: 'In Progress',
-    wishlist: 'On the List',
+    watched: '完了',
+    read: '完了',
+    listened: '完了',
+    watching: '進行中',
+    reading: '進行中',
+    listening: '進行中',
+    wishlist: 'あとで見る',
 };
 
 export type SidebarStatusFilter = 'in-progress' | 'on-the-list' | 'completed';
 
 export const SIDEBAR_STATUS_OPTIONS: { value: SidebarStatusFilter; label: string }[] = [
-    { value: 'in-progress', label: 'In Progress' },
-    { value: 'on-the-list', label: 'On the List' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'in-progress', label: '進行中' },
+    { value: 'on-the-list', label: 'あとで見る' },
+    { value: 'completed', label: '完了' },
 ];
 
 const SIDEBAR_STATUS_TO_RAW: Record<SidebarStatusFilter, string[]> = {

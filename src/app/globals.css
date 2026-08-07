@@ -579,6 +579,18 @@ body {
   border: 1px solid var(--border);
 }
 
+@media (max-width: 639px) {
+  .detail-page-poster-wrap.is-empty {
+    width: min(12rem, 100%);
+    align-self: center;
+  }
+
+  .detail-page-poster-wrap.is-empty .detail-page-poster-box {
+    aspect-ratio: auto !important;
+    height: 10rem;
+  }
+}
+
 @media (min-width: 640px) {
   .detail-page-header {
     display: grid;

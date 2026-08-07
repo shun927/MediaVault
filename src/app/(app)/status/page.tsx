@@ -83,14 +83,14 @@ function StatusPageContent() {
                     <Card hover={false}>
                         <div className="text-center py-12 text-[var(--text-muted)]">
                             <p className="text-lg mb-1 font-semibold text-[var(--text-primary)]">No titles in {activeLabel}</p>
-                            <p className="text-sm text-[var(--text-muted)]">Add or update items to see them here.</p>
+                            <p className="text-sm text-[var(--text-muted)]">作品を追加または更新すると、ここに表示されます。</p>
                         </div>
                     </Card>
                 ) : (
                     <div className="space-y-7">
-                        <StatusSection title="Films" items={movies} hrefPrefix="/movies" />
-                        <StatusSection title="Books" items={books} hrefPrefix="/books" />
-                        <StatusSection title="Music" items={music} hrefPrefix="/music" />
+                        <StatusSection title="映画・TV" items={movies} hrefPrefix="/movies" />
+                        <StatusSection title="本" items={books} hrefPrefix="/books" />
+                        <StatusSection title="音楽" items={music} hrefPrefix="/music" />
                     </div>
                 )}
                 </div>

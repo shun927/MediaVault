@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   try {
-    await authenticateRequest(request);
+    await authenticateRequest(request, undefined, { syncUser: false });
     const response = NextResponse.next();
     response.headers.set("Cache-Control", "private, no-store");
     return response;

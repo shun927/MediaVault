@@ -26,6 +26,18 @@ export async function POST(request: Request) {
     for (const key of fields[input.kind]) if (key in input.item) row[key] = input.item[key] ?? null;
     if (typeof row.title !== "string" || !row.title.trim()) return Response.json({ error: "Title is required" }, { status: 400 });
 
+    const externalKey = input.kind === "movies" ? "tmdb_id" : input.kind === "books" ? "google_books_id" : "spotify_id";
+    const externalId = row[externalKey];
+    if (externalId !== null && externalId !== undefined && externalId !== "") {
+      const discriminator = input.kind === "movies" ? "media_type" : input.kind === "music" ? "type" : null;
+      const duplicate = discriminator
+        ? await env.DB.prepare(`SELECT id FROM "${input.kind}" WHERE owner_id = ? AND "${externalKey}" = ? AND "${discriminator}" = ?`).bind(user.id, externalId, row[discriminator]).first<{ id: string }>()
+        : await env.DB.prepare(`SELECT id FROM "${input.kind}" WHERE owner_id = ? AND "${externalKey}" = ?`).bind(user.id, externalId).first<{ id: string }>();
+      if (duplicate) {
+        return Response.json({ error: "追加済みの作品です", data: { id: duplicate.id } }, { status: 409, headers: { "Cache-Control": "no-store" } });
+      }
+    }
+
     const names = Object.keys(row);
     const statements: D1PreparedStatement[] = [
       env.DB.prepare(`INSERT INTO "${input.kind}" (${names.map((key) => `"${key}"`).join(",")}) VALUES (${names.map(() => "?").join(",")})`).bind(...Object.values(row)),

@@ -202,6 +202,38 @@ importはD1 batchで実行します。途中で失敗した場合に一部だけ
 | `npm run test:e2e` | Playwright E2E |
 | `npm run build` | Next.js production build |
 
+## アプリを更新する
+
+コードを更新したときは、schemaを先に適用してからWorkerをデプロイします。
+
+```bash
+git pull
+npm install
+npm run lint
+npm run typecheck
+npm test
+npm run db:migrate:remote
+npm run deploy
+```
+
+D1 migrationは適用済みのファイルを自動的に飛ばし、未適用分だけを実行します。今回追加した`0002_owner_integrity.sql`は、タグと履歴が別ユーザーの作品を参照できないようにするため、次回デプロイ前に必ず適用してください。
+
+更新後は次を確認します。
+
+- Googleログイン後にDashboardが表示される
+- 既存の映画・本・音楽・タグ・履歴が残っている
+- 作品の作成、編集、削除ができる
+- スマホで横スクロールや操作不能なモーダルがない
+
+現在は手動デプロイです。`git push`だけではCloudflare本番は更新されません。
+
+## データ保護
+
+- データAPIは実行時に入力を検証し、不明な操作を拒否します。
+- 更新と削除にはfilterが必須で、誤った全件変更を防ぎます。
+- D1 triggerが作品・タグ・履歴のowner一致を強制します。
+- 同じexportを複数ユーザーがimportしてIDが衝突した場合は、新しいIDへ安全に付け替えます。
+- importは実際に受信したバイト数を計測し、10MBを超えるリクエストを拒否します。
 ## バックアップと運用
 
 remote D1のSQLバックアップ:

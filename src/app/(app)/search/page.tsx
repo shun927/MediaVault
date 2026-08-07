@@ -2,13 +2,15 @@
 
 import { useState, useEffect, Suspense, useRef } from 'react';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StarRating from '@/components/ui/StarRating';
 import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
+import ManualAddModal from '@/components/media/ManualAddModal';
 import { Textarea } from '@/components/ui/Input';
 import { createClient } from '@/lib/data-client';
 import type { TMDBSearchResult, BookSearchResult, SpotifySearchResult, Tag } from '@/lib/types';
@@ -24,6 +26,8 @@ export default function SearchPageWrapper() {
 
 function SearchPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const { showToast } = useToast();
     const initialTab = searchParams.get('tab');
     const initialQuery = searchParams.get('q') || '';
     const sharedTitleHint = searchParams.get('titleHint');
@@ -92,6 +96,11 @@ function SearchPage() {
                 const res = await fetch(`/api/search/movies?q=${encodeURIComponent(q)}`);
                 const data = await res.json() as { results?: TMDBSearchResult[]; error?: string };
                 setMovieResults(data.results || []);
+                if (!res.ok || data.error) {
+                    setSearchError(data.error || `検索に失敗しました（${res.status}）`);
+                } else if (!data.results?.length) {
+                    setSearchError('該当する映画・TVが見つかりませんでした');
+                }
             } else if (targetTab === 'books') {
                 await searchBooksByQuery(q, { titleHint: options?.titleHint });
             } else {
@@ -322,8 +331,16 @@ function SearchPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ kind, item, tagIds: addForm.selectedTags, addHistory }),
             });
-            const result = await response.json() as { error?: string };
+            const result = await response.json() as { error?: string; data?: { id: string } };
+            if (response.status === 409 && result.data) {
+                showToast('追加済みの作品を開きます', 'info');
+                router.push(`/${kind}/${result.data.id}`);
+                return;
+            }
             if (!response.ok) throw new Error(result.error || "Could not add item");
+            if (!result.data) throw new Error('追加結果を確認できませんでした');
+            showToast('コレクションに追加しました', 'success');
+            router.push(`/${kind}/${result.data.id}`);
             setSelectedMovie(null);
             setSelectedBook(null);
             setSelectedMusic(null);
@@ -400,7 +417,7 @@ function SearchPage() {
             <div className="app-topbar">
                 <div className="app-topbar-controls">
                     <div className="app-topbar-title">
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Search</h1>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>作品を探す</h1>
                     </div>
                     <div className="app-topbar-controls ml-auto">
                         <div className="app-pill-group">
@@ -410,7 +427,7 @@ function SearchPage() {
                                     onClick={() => { setTab(t); setMovieResults([]); setBookResults([]); setMusicResults([]); }}
                                     className={`app-pill-btn ${tab === t ? 'is-active' : ''}`}
                                 >
-                                    {t === 'movies' ? 'Films' : t === 'books' ? 'Books' : 'Music'}
+                                    {t === 'movies' ? '映画・TV' : t === 'books' ? '本' : '音楽'}
                                 </button>
                             ))}
                         </div>
@@ -418,25 +435,29 @@ function SearchPage() {
                             className="app-control-input"
                             placeholder={
                                 tab === 'movies'
-                                    ? 'Search movies, anime, TV shows...'
+                                    ? '映画、アニメ、TVを検索…'
                                     : tab === 'books'
-                                        ? 'Search books...'
-                                        : 'Search songs and albums...'
+                                        ? '本を検索…'
+                                        : '曲やアルバムを検索…'
                             }
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         />
-                        <Button onClick={() => void handleSearch()} isLoading={searching} variant="secondary">Search</Button>
+                        <Button onClick={() => void handleSearch()} isLoading={searching} variant="secondary">検索</Button>
+                        <ManualAddModal initialKind={tab} tags={tags} />
                         {tab === 'books' && (
-                            <Button onClick={() => setScannerOpen(true)} variant="secondary">Scan ISBN</Button>
+                            <Button onClick={() => setScannerOpen(true)} variant="secondary">ISBNを読み取る</Button>
                         )}
                     </div>
                 </div>
             </div>
 
-            {(tab === 'books' || tab === 'music') && searchError && (
-                <p className="text-sm text-red-400">{searchError}</p>
+            {searchError && (
+                <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-300">
+                    <span>{searchError}</span>
+                    {query.trim() && <Button variant="secondary" onClick={() => void handleSearch()}>再試行</Button>}
+                </div>
             )}
 
             {/* 映画・TV結果 */}

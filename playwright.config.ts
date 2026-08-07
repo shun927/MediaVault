@@ -3,12 +3,18 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  timeout: 90_000,
+  workers: 2,
   reporter: [["html", { open: "never" }]],
-  use: { baseURL: "http://127.0.0.1:4173", trace: "retain-on-failure", extraHTTPHeaders: { "x-mediavault-dev-auth": "1" } },
+  use: {
+    baseURL: "http://127.0.0.1:4173",
+    trace: "retain-on-failure",
+    extraHTTPHeaders: { "x-mediavault-dev-auth": "1" },
+  },
   webServer: {
     command: "npm run db:migrate:local && npm run dev -- --port 4173",
     url: "http://127.0.0.1:4173/dashboard",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     env: { DEV_AUTH_SUB: "e2e-user", DEV_AUTH_EMAIL: "e2e@example.com" },
     timeout: 120_000,
   },

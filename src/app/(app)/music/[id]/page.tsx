@@ -10,6 +10,8 @@ import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
+import QuickLogButton from '@/components/media/QuickLogButton';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/data-client';
 import type { ListeningHistory, Music, Tag } from '@/lib/types';
 import { MUSIC_STATUS_OPTIONS } from '@/lib/status';
@@ -18,6 +20,8 @@ export default function MusicDetailPage() {
     const params = useParams();
     const itemId = Array.isArray(params.id) ? params.id[0] : params.id;
     const router = useRouter();
+    const { showToast } = useToast();
+    const [isEditing, setIsEditing] = useState(false);
     const [item, setItem] = useState<Music | null>(null);
     const [allTags, setAllTags] = useState<Tag[]>([]);
     const [history, setHistory] = useState<ListeningHistory[]>([]);
@@ -55,7 +59,6 @@ export default function MusicDetailPage() {
     }, [itemId, router]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadMusic();
     }, [loadMusic]);
 
@@ -78,39 +81,28 @@ export default function MusicDetailPage() {
             }),
         });
         setSavingMeta(false);
-        if (!response.ok) { alert("Save failed. No changes were committed."); return false; }
+        if (!response.ok) { showToast('保存できませんでした。変更は反映されていません', 'error'); return false; }
         await loadMusic();
+        setIsEditing(false);
+        showToast('変更を保存しました', 'success');
         return true;
     }
 
     async function handleAddHistory(): Promise<boolean> {
         if (!item) return false;
         setSavingHistory(true);
-        const dataClient = createClient();
-        const { data: { user } } = await dataClient.auth.getUser();
-        if (!user) {
-            alert('ログイン情報を確認できないため履歴を追加できませんでした。');
-            setSavingHistory(false);
+        try {
+            const response = await fetch(`/api/library/music/${item.id}/history`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ occurredAt: new Date(historyForm.date).toISOString(), note: historyForm.note.trim() || undefined }) });
+            if (!response.ok) throw new Error('履歴を追加できませんでした');
+            setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
+            setShowHistoryForm(false);
+            await loadMusic();
+            showToast('再生履歴を追加しました', 'success');
+            return true;
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : '履歴を追加できませんでした', 'error');
             return false;
-        }
-
-        const { error: insertError } = await dataClient.from('listening_history').insert({
-            music_id: item.id,
-            user_id: user.id,
-            listened_at: new Date(historyForm.date).toISOString(),
-            note: historyForm.note.trim() || null,
-        });
-        if (insertError) {
-            alert(`履歴追加に失敗しました。\n${insertError.message}`);
-            setSavingHistory(false);
-            return false;
-        }
-
-        setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
-        setShowHistoryForm(false);
-        setSavingHistory(false);
-        await loadMusic();
-        return true;
+        } finally { setSavingHistory(false); }
     }
 
     async function handleDeleteHistory(historyId: string) {
@@ -130,7 +122,7 @@ export default function MusicDetailPage() {
     }
 
     async function handleDelete() {
-        if (!confirm('Delete this title from your collection?')) return;
+        if (!confirm('この音楽をコレクションから削除しますか？')) return;
         const dataClient = createClient();
         await dataClient.from('music').delete().eq('id', itemId);
         router.push('/music');
@@ -165,19 +157,22 @@ export default function MusicDetailPage() {
             </div>
 
             <div className="detail-page-media-row">
-                <div className="detail-page-poster-wrap">
+                <div className={`detail-page-poster-wrap ${item.artwork_url ? '' : 'is-empty'}`}>
                     <div className="detail-page-poster-box aspect-square">
                         {item.artwork_url ? (
                             <Image src={item.artwork_url} alt={item.title} fill sizes="(max-width: 640px) 100vw, 224px" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                            <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--text-muted)]">画像なし</div>
                         )}
                     </div>
                 </div>
 
                 <div className="flex-1 space-y-4">
                     <Card hover={false} className="space-y-4">
-                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">My Info</h3>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">マイ情報</h3>
+                            <div className="flex gap-2"><QuickLogButton kind="music" itemId={item.id} onLogged={() => void loadMusic()} /><Button variant="secondary" onClick={() => setIsEditing(true)}>編集</Button></div>
+                        </div>
 
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-2 gap-x-3 text-sm leading-relaxed">
                             <span className="text-[var(--text-muted)]">Rating</span>
@@ -225,7 +220,7 @@ export default function MusicDetailPage() {
                                                 </svg>
                                                 <div className="min-w-0">
                                                     <p className="text-sm text-[var(--text-primary)]">
-                                                        {new Date(h.listened_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                        {new Date(h.listened_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                     </p>
                                                     {h.note && <p className="text-xs text-[var(--text-muted)] truncate">{h.note}</p>}
                                                 </div>
@@ -239,8 +234,9 @@ export default function MusicDetailPage() {
                         </div>
                     </Card>
 
+                    {isEditing && (
                     <Card hover={false} className="space-y-3 !bg-[var(--bg-tertiary)] border border-[var(--border)]">
-                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Edit Settings</h3>
+                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">編集</h3>
                         <div>
                             <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
                             <StarRating value={editMeta.rating} onChange={(v) => setEditMeta((prev) => ({ ...prev, rating: v }))} />
@@ -346,13 +342,15 @@ export default function MusicDetailPage() {
                             )}
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button onClick={handleSaveAll} isLoading={savingMeta || savingHistory}>Save Changes</Button>
+                            <Button onClick={handleSaveAll} isLoading={savingMeta || savingHistory}>変更を保存</Button>
+                            <Button variant="secondary" onClick={() => setIsEditing(false)}>キャンセル</Button>
                             <StatusBadge status={editMeta.status} />
                         </div>
                     </Card>
+                    )}
 
                     <div className="flex gap-2 pt-2">
-                        <Button variant="danger" onClick={handleDelete}>Delete</Button>
+                        <Button variant="danger" onClick={handleDelete}>削除</Button>
                     </div>
                 </div>
             </div>

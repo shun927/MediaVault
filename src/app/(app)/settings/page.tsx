@@ -215,7 +215,7 @@ export default function SettingsPage() {
             <div className="app-topbar">
                 <div className="app-topbar-main">
                     <div className="app-topbar-title">
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>設定</h1>
                     </div>
                 </div>
             </div>
@@ -223,7 +223,7 @@ export default function SettingsPage() {
             <div className="px-4 lg:px-9 pt-5 pb-8 space-y-6">
                 <div className="grid gap-6 xl:grid-cols-[1.6fr_0.7fr_0.7fr] items-stretch">
                     <Card hover={false} className="h-full p-4">
-                        <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Profile</h2>
+                        <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>プロフィール</h2>
                         {profileLoading ? (
                             <div className="space-y-3">
                                 <div className="animate-shimmer rounded h-24 w-full" />
@@ -252,9 +252,9 @@ export default function SettingsPage() {
 
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     <StatCard label="Total Items" value={totalItems} />
-                                    <StatCard label="Films" value={stats.movies} />
-                                    <StatCard label="Books" value={stats.books} />
-                                    <StatCard label="Music" value={stats.music} />
+                                    <StatCard label="映画・TV" value={stats.movies} />
+                                    <StatCard label="本" value={stats.books} />
+                                    <StatCard label="音楽" value={stats.music} />
                                     <StatCard label="Tags" value={stats.tags} />
                                     <StatCard label="In Progress" value={statusStats.inProgress} />
                                     <StatCard label="On the List" value={statusStats.onList} />
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                     </Card>
 
                     <Card hover={false} className="h-full p-4">
-                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Theme</h2>
+                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>テーマ</h2>
                         <p className="text-sm text-[var(--text-muted)] mb-3">
                             Choose color theme
                         </p>
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                     </Card>
 
                     <Card hover={false} className="h-full p-4 flex flex-col">
-                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Data & Account</h2>
+                        <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>データとアカウント</h2>
                         <p className="text-sm text-[var(--text-muted)] mb-3">Export/import your records and manage your session.</p>
                         <input
                             ref={fileInputRef}
@@ -294,9 +294,9 @@ export default function SettingsPage() {
                             className="hidden"
                         />
                         <div className="grid grid-cols-1 gap-2">
-                            <Button className="py-1.5" onClick={handleExport} isLoading={exporting} variant="secondary">Export JSON</Button>
-                            <Button className="py-1.5" onClick={() => fileInputRef.current?.click()} isLoading={importing} variant="secondary">Import JSON</Button>
-                            <Button className="py-1.5" onClick={handleLogout} variant="danger">Logout</Button>
+                            <Button className="py-1.5" onClick={handleExport} isLoading={exporting} variant="secondary">JSONを書き出す</Button>
+                            <Button className="py-1.5" onClick={() => fileInputRef.current?.click()} isLoading={importing} variant="secondary">JSONを読み込む</Button>
+                            <Button className="py-1.5" onClick={handleLogout} variant="danger">ログアウト</Button>
                         </div>
                         {importResult && (
                             <p className={`mt-3 text-sm ${importResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
@@ -310,8 +310,8 @@ export default function SettingsPage() {
                     <Card hover={false}>
                         <div className="flex items-center justify-between mb-4 gap-3">
                             <div>
-                                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Tag Management</h2>
-                                <p className="text-sm text-[var(--text-muted)] mt-1">Create, edit, and delete tags from Settings</p>
+                                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>タグ管理</h2>
+                                <p className="text-sm text-[var(--text-muted)] mt-1">タグの作成、編集、削除ができます</p>
                             </div>
                             <Button onClick={() => { setShowCreateTag(true); setTagForm({ name: '', color: '#6366f1' }); }}>+ Create Tag</Button>
                         </div>

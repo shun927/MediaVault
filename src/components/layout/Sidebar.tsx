@@ -116,7 +116,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
                         <span className="text-[18px] font-bold tracking-[0.04em]" style={{ fontFamily: 'Archivo, sans-serif' }}>
-                            HOME
+                            ホーム
                         </span>
                     </Link>
                     <Link
@@ -129,7 +129,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
                         <span className="text-[18px] font-bold tracking-[0.04em]" style={{ fontFamily: 'Archivo, sans-serif' }}>
-                            SEARCH
+                            作品を探す
                         </span>
                     </Link>
                     {isShortViewport && <SettingsLink active={pathname.startsWith('/settings')} onClose={onClose} />}
@@ -137,19 +137,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                 <div className="px-5 pt-4.5">
                     <h3 className="text-[11px] font-extrabold tracking-[0.1em] uppercase" style={{ color: 'var(--sidebar-section)', fontFamily: 'Archivo, sans-serif' }}>
-                        Collections
+                        コレクション
                     </h3>
                     <div className="mt-2 space-y-0.5">
-                        <SidebarLink href="/movies" label="Films" count={counts.films} active={pathname.startsWith('/movies')} onClose={onClose} />
-                        <SidebarLink href="/books" label="Books" count={counts.books} active={pathname.startsWith('/books')} onClose={onClose} />
-                        <SidebarLink href="/music" label="Music" count={counts.music} active={pathname.startsWith('/music')} onClose={onClose} />
-                        <SidebarLink href="/timeline" label="Timeline" active={pathname.startsWith('/timeline')} onClose={onClose} />
+                        <SidebarLink href="/movies" label="映画・TV" count={counts.films} active={pathname.startsWith('/movies')} onClose={onClose} />
+                        <SidebarLink href="/books" label="本" count={counts.books} active={pathname.startsWith('/books')} onClose={onClose} />
+                        <SidebarLink href="/music" label="音楽" count={counts.music} active={pathname.startsWith('/music')} onClose={onClose} />
+                        <SidebarLink href="/timeline" label="タイムライン" active={pathname.startsWith('/timeline')} onClose={onClose} />
                     </div>
                 </div>
 
                 <div className="px-5 pt-5">
                     <h3 className="text-[11px] font-extrabold tracking-[0.1em] uppercase" style={{ color: 'var(--sidebar-section)', fontFamily: 'Archivo, sans-serif' }}>
-                        Status
+                        状態
                     </h3>
                     <div className="mt-2 space-y-0.5">
                         {SIDEBAR_STATUS_OPTIONS.map((status) => (
@@ -231,7 +231,7 @@ function SettingsLink({ active, onClose }: { active: boolean; onClose: () => voi
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
             </svg>
             <span className="text-[18px] font-bold tracking-[0.04em]" style={{ fontFamily: 'Archivo, sans-serif' }}>
-                SETTINGS
+                設定
             </span>
         </Link>
     );

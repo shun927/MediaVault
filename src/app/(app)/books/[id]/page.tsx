@@ -9,6 +9,8 @@ import StarRating from '@/components/ui/StarRating';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
+import QuickLogButton from '@/components/media/QuickLogButton';
+import { useToast } from '@/components/ui/Toast';
 import { createClient } from '@/lib/data-client';
 import type { Book, Tag, ReadingHistory } from '@/lib/types';
 import { BOOK_STATUS_OPTIONS } from '@/lib/status';
@@ -17,6 +19,8 @@ import Link from 'next/link';
 export default function BookDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { showToast } = useToast();
+    const [isEditing, setIsEditing] = useState(false);
     const [book, setBook] = useState<Book | null>(null);
     const [allTags, setAllTags] = useState<Tag[]>([]);
     const [history, setHistory] = useState<ReadingHistory[]>([]);
@@ -54,7 +58,6 @@ export default function BookDetailPage() {
     }, [params.id, router]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadBook();
     }, [loadBook]);
 
@@ -77,31 +80,25 @@ export default function BookDetailPage() {
             }),
         });
         setSavingMeta(false);
-        if (!response.ok) { alert("Save failed. No changes were committed."); return; }
+        if (!response.ok) { showToast('保存できませんでした。変更は反映されていません', 'error'); return; }
         await loadBook();
+        setIsEditing(false);
+        showToast('変更を保存しました', 'success');
     }
 
     async function handleAddHistory() {
         if (!book) return;
         setSavingHistory(true);
-        const dataClient = createClient();
-        const { data: { user } } = await dataClient.auth.getUser();
-        if (!user) {
-            setSavingHistory(false);
-            return;
-        }
-
-        await dataClient.from('reading_history').insert({
-            book_id: book.id,
-            user_id: user.id,
-            read_at: new Date(historyForm.date).toISOString(),
-            note: historyForm.note.trim() || null,
-        });
-
-        setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
-        setShowHistoryForm(false);
-        setSavingHistory(false);
-        await loadBook();
+        try {
+            const response = await fetch(`/api/library/books/${book.id}/history`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ occurredAt: new Date(historyForm.date).toISOString(), note: historyForm.note.trim() || undefined }) });
+            if (!response.ok) throw new Error('履歴を追加できませんでした');
+            setHistoryForm({ date: new Date().toISOString().slice(0, 10), note: '' });
+            setShowHistoryForm(false);
+            await loadBook();
+            showToast('読書履歴を追加しました', 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : '履歴を追加できませんでした', 'error');
+        } finally { setSavingHistory(false); }
     }
 
     async function handleDeleteHistory(historyId: string) {
@@ -118,7 +115,7 @@ export default function BookDetailPage() {
     }
 
     async function handleDelete() {
-        if (!confirm('Delete this book from your collection?')) return;
+        if (!confirm('この本をコレクションから削除しますか？')) return;
         const dataClient = createClient();
         await dataClient.from('books').delete().eq('id', params.id);
         router.push('/books');
@@ -152,12 +149,12 @@ export default function BookDetailPage() {
             </div>
 
             <div className="detail-page-media-row">
-                <div className="detail-page-poster-wrap">
+                <div className={`detail-page-poster-wrap ${book.cover_url ? '' : 'is-empty'}`}>
                     <div className="detail-page-poster-box aspect-[2/3]">
                         {book.cover_url ? (
                             <Image src={book.cover_url} alt={book.title} fill sizes="(max-width: 640px) 100vw, 224px" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                            <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--text-muted)]">画像なし</div>
                         )}
                     </div>
                 </div>
@@ -171,7 +168,10 @@ export default function BookDetailPage() {
                     )}
 
                     <Card hover={false} className="space-y-4">
-                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">My Info</h3>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">マイ情報</h3>
+                            <div className="flex gap-2"><QuickLogButton kind="books" itemId={book.id} onLogged={() => void loadBook()} /><Button variant="secondary" onClick={() => setIsEditing(true)}>編集</Button></div>
+                        </div>
 
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-2 gap-x-3 text-sm leading-relaxed">
                             <span className="text-[var(--text-muted)]">Rating</span>
@@ -219,7 +219,7 @@ export default function BookDetailPage() {
                                                 </svg>
                                                 <div className="min-w-0">
                                                     <p className="text-sm text-[var(--text-primary)]">
-                                                        {new Date(h.read_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                        {new Date(h.read_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                     </p>
                                                     {h.note && <p className="text-xs text-[var(--text-muted)] truncate">{h.note}</p>}
                                                 </div>
@@ -233,8 +233,9 @@ export default function BookDetailPage() {
                         </div>
                     </Card>
 
+                    {isEditing && (
                     <Card hover={false} className="space-y-3 !bg-[var(--bg-tertiary)] border border-[var(--border)]">
-                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Edit Settings</h3>
+                        <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">編集</h3>
                         <div>
                             <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
                             <StarRating value={editMeta.rating} onChange={(v) => setEditMeta(prev => ({ ...prev, rating: v }))} />
@@ -340,13 +341,15 @@ export default function BookDetailPage() {
                             )}
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button onClick={handleSaveAll} isLoading={savingMeta || savingHistory}>Save Changes</Button>
+                            <Button onClick={handleSaveAll} isLoading={savingMeta || savingHistory}>変更を保存</Button>
+                            <Button variant="secondary" onClick={() => setIsEditing(false)}>キャンセル</Button>
                             <StatusBadge status={editMeta.status} />
                         </div>
                     </Card>
+                    )}
 
                     <div className="flex gap-2 pt-2">
-                        <Button variant="danger" onClick={handleDelete}>Delete</Button>
+                        <Button variant="danger" onClick={handleDelete}>削除</Button>
                     </div>
                 </div>
             </div>

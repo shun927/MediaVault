@@ -3,8 +3,8 @@
 import { usePathname } from "next/navigation";
 
 const titles: Record<string, string> = {
-  dashboard: "Home", search: "Search", movies: "Films", books: "Books",
-  music: "Music", timeline: "Timeline", status: "Status", tags: "Tags", settings: "Settings",
+  dashboard: "ホーム", search: "作品を探す", movies: "映画・TV", books: "本",
+  music: "音楽", timeline: "タイムライン", status: "状態", tags: "タグ", settings: "設定",
 };
 
 export default function Header({ onMenuToggle }: { onMenuToggle: () => void }) {

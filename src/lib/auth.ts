@@ -34,13 +34,19 @@ export async function verifyAccessToken(token: string, env: MediaVaultEnv, verif
   };
 }
 
-export async function authenticateRequest(request: Request, injectedEnv?: MediaVaultEnv): Promise<{ user: AuthenticatedUser; env: MediaVaultEnv }> {
+export async function authenticateRequest(
+  request: Request,
+  injectedEnv?: MediaVaultEnv,
+  options: { syncUser?: boolean } = {},
+): Promise<{ user: AuthenticatedUser; env: MediaVaultEnv }> {
   const env = injectedEnv || await getEnv();
   let user: AuthenticatedUser;
-  if (process.env.NODE_ENV !== "production" && env.DEV_AUTH_SUB) {
+  const devAuthSub = env.DEV_AUTH_SUB || process.env.DEV_AUTH_SUB;
+  const devAuthEmail = env.DEV_AUTH_EMAIL || process.env.DEV_AUTH_EMAIL;
+  if (process.env.NODE_ENV !== "production" && devAuthSub) {
     user = {
-      id: env.DEV_AUTH_SUB,
-      email: env.DEV_AUTH_EMAIL || "local@example.com",
+      id: devAuthSub,
+      email: devAuthEmail || "local@example.com",
       displayName: "Local user",
     };
   } else {
@@ -49,14 +55,18 @@ export async function authenticateRequest(request: Request, injectedEnv?: MediaV
     user = await verifyAccessToken(token, env);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO users (id, email, display_name, updated_at)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       email = excluded.email,
-       display_name = COALESCE(excluded.display_name, users.display_name),
-       updated_at = excluded.updated_at`
-  ).bind(user.id, user.email, user.displayName, new Date().toISOString()).run();
+  if (options.syncUser !== false) {
+    await env.DB.prepare(
+      `INSERT INTO users (id, email, display_name, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         email = excluded.email,
+         display_name = COALESCE(excluded.display_name, users.display_name),
+         updated_at = excluded.updated_at
+       WHERE users.email IS NOT excluded.email
+          OR (excluded.display_name IS NOT NULL AND users.display_name IS NOT excluded.display_name)`
+    ).bind(user.id, user.email, user.displayName, new Date().toISOString()).run();
+  }
 
   return { user, env };
 }
@@ -64,13 +74,20 @@ export async function authenticateRequest(request: Request, injectedEnv?: MediaV
 export async function authenticateSearchRequest(request: Request, route: string) {
   const auth = await authenticateRequest(request);
   const windowStart = new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString();
-  const row = await auth.env.DB.prepare(
-    `INSERT INTO rate_limits (owner_id, route, window_start, request_count)
-     VALUES (?, ?, ?, 1)
-     ON CONFLICT(owner_id, route, window_start)
-     DO UPDATE SET request_count = request_count + 1
-     RETURNING request_count`
-  ).bind(auth.user.id, route, windowStart).first<{ request_count: number }>();
+  const results = await auth.env.DB.batch<{ request_count: number }>([
+    auth.env.DB.prepare(
+      `DELETE FROM rate_limits
+       WHERE owner_id = ? AND route = ? AND window_start < ?`
+    ).bind(auth.user.id, route, windowStart),
+    auth.env.DB.prepare(
+      `INSERT INTO rate_limits (owner_id, route, window_start, request_count)
+       VALUES (?, ?, ?, 1)
+       ON CONFLICT(owner_id, route, window_start)
+       DO UPDATE SET request_count = request_count + 1
+       RETURNING request_count`
+    ).bind(auth.user.id, route, windowStart),
+  ]);
+  const row = results[1]?.results[0];
   if ((row?.request_count || 0) > 60) throw new Error("Rate limit exceeded");
   return auth;
 }

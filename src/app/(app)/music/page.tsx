@@ -39,29 +39,29 @@ export default function MusicPage() {
             <div className="app-topbar">
                 <div className="app-topbar-controls">
                     <div className="app-topbar-title">
-                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Music</h1>
+                        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>音楽</h1>
                         <p className="text-sm text-[var(--text-muted)] mt-1">{music.length} titles</p>
                     </div>
                     <div className="app-topbar-controls ml-auto">
                         <input
                             className="app-control-input"
-                            placeholder="Search titles..."
+                            placeholder="タイトルを検索…"
                             value={filter.search}
                             onChange={(e) => setFilter((prev) => ({ ...prev, search: e.target.value }))}
                         />
                         <select className="app-control-select" value={filter.status} onChange={(e) => setFilter((prev) => ({ ...prev, status: e.target.value }))}>
-                            <option value="">All</option>
+                            <option value="">すべて</option>
                             {MUSIC_STATUS_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                         </select>
                         <select className="app-control-select" value={sort} onChange={(e) => setSort(e.target.value)}>
-                            <option value="created_at">Recent</option>
+                            <option value="created_at">追加が新しい順</option>
                             <option value="title">Title</option>
                             <option value="rating">Rating</option>
                         </select>
                         <Link href="/search?tab=music">
-                            <Button>+ Add Music</Button>
+                            <Button>＋ 音楽を追加</Button>
                         </Link>
                     </div>
                 </div>
@@ -77,9 +77,9 @@ export default function MusicPage() {
                 ) : music.length === 0 ? (
                     <Card hover={false}>
                         <div className="text-center py-12 text-[var(--text-muted)]">
-                            <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>No Music</p>
+                            <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>音楽はまだありません</p>
                             <Link href="/search?tab=music" className="text-sm text-[var(--accent)] hover:underline mt-2 inline-block">
-                                Search and add music →
+                                検索または手動で追加する →
                             </Link>
                         </div>
                     </Card>

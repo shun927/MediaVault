@@ -333,7 +333,7 @@ function TimelinePageContent() {
     function monthLabel(year: string, month: string) {
         const d = new Date(`${year}-${month}-01T00:00:00`);
         if (Number.isNaN(d.getTime())) return month;
-        return d.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+        return d.toLocaleDateString('ja-JP', { month: 'long' });
     }
 
     function monthShortLabel(year: string, month: string) {
@@ -350,12 +350,12 @@ function TimelinePageContent() {
 
     function entryStatusLabel(status: string) {
         const s = status.toLowerCase();
-        if (s === 'watched') return 'Watched';
-        if (s === 'read') return 'Read';
-        if (s === 'listened') return 'Listened';
-        if (s === 'watching') return 'Active';
-        if (s === 'reading') return 'Active';
-        if (s === 'listening') return 'Active';
+        if (s === 'watched') return '鑑賞済み';
+        if (s === 'read') return '読了';
+        if (s === 'listened') return '再生済み';
+        if (s === 'watching') return '進行中';
+        if (s === 'reading') return '進行中';
+        if (s === 'listening') return '進行中';
         return status;
     }
 
@@ -395,16 +395,16 @@ function TimelinePageContent() {
             <div className="app-topbar">
                 <div className="app-topbar-main">
                     <div className="app-topbar-title">
-                        <h1 className="text-2xl font-bold timeline-heading">Timeline</h1>
+                        <h1 className="text-2xl font-bold timeline-heading">タイムライン</h1>
                         <p className="text-sm timeline-subheading mt-1">
                             {statusLabel ? `${statusLabel} · ` : ''}
-                            Your Culture Timeline — {filtered.length} logs
+                            作品の記録 — {filtered.length}件
                         </p>
                     </div>
                     <div className="app-topbar-controls">
                         <input
                             className="app-control-input"
-                            placeholder="Search titles..."
+                            placeholder="タイトルを検索…"
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                         />
@@ -415,7 +415,7 @@ function TimelinePageContent() {
                                     onClick={() => setFilterType(type)}
                                     className={`app-pill-btn ${filterType === type ? 'is-active' : ''}`}
                                 >
-                                    {type === 'all' ? 'All' : type === 'movie' ? 'Films' : type === 'book' ? 'Books' : 'Music'}
+                                    {type === 'all' ? 'すべて' : type === 'movie' ? '映画' : type === 'book' ? '本' : '音楽'}
                                 </button>
                             ))}
                         </div>
@@ -430,15 +430,38 @@ function TimelinePageContent() {
                             <div key={i} className="animate-shimmer rounded-[8px] aspect-[2/3]" />
                         ))}
                     </div>
-                ) : !years.length ? (
+                ) : filtered.length === 0 ? (
                     <Card hover={false}>
                         <div className="py-14 text-center">
-                            <p className="text-lg font-medium mb-2 timeline-heading">No Timeline Logs</p>
-                            <p className="text-sm timeline-subheading">Completed items and relogged history will appear here.</p>
+                            <p className="text-lg font-medium mb-2 timeline-heading">記録はまだありません</p>
+                            <p className="text-sm timeline-subheading">作品を完了にするか、履歴を追加するとここに表示されます。</p>
                         </div>
                     </Card>
                 ) : (
                     <>
+                        <div className="timeline-mobile-feed">
+                            {[...years].reverse().flatMap((year) => [...months].reverse()
+                                .filter((month) => monthEntries(year, month).length > 0)
+                                .map((month) => ({ year, month })))
+                                .map(({ year, month }) => (
+                                    <section key={`mobile-${year}-${month}`} className="timeline-mobile-month">
+                                        <h2>{year}年 {monthLabel(year, month)}</h2>
+                                        <div className="timeline-mobile-list">
+                                            {[...monthEntries(year, month)].reverse().map((entry) => (
+                                                <Link key={`mobile-${entry.entryId}`} href={entry.type === 'movie' ? `/movies/${entry.itemId}` : entry.type === 'book' ? `/books/${entry.itemId}` : `/music/${entry.itemId}`} className="timeline-mobile-entry">
+                                                    <span className="timeline-mobile-date">{new Date(entry.loggedAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}</span>
+                                                    <span className="timeline-entry-main">
+                                                        <span className="timeline-entry-title">{entry.title}</span>
+                                                        <span className="timeline-entry-meta">{itemMeta(entry)}</span>
+                                                    </span>
+                                                    <span className="timeline-entry-side">{entryStatusLabel(entry.status)}</span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ))}
+                        </div>
+
                         <div className="timeline-canvas" ref={canvasRef}>
                             <div className="timeline-years-track">
                                 {years.map((year, index) => (

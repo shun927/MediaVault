@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,6 +16,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
+        <ToastProvider>
         <div className="min-h-screen bg-[var(--bg-primary)]">
             <Suspense fallback={null}>
                 <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -27,5 +29,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </main>
             </div>
         </div>
+        </ToastProvider>
     );
 }

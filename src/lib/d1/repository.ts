@@ -1,16 +1,38 @@
 import type { AuthenticatedUser } from "@/lib/auth";
+import { z } from "zod";
 
-type Filter = { column: string; operator: "eq" | "in" | "gte" | "lte" | "lt" | "ilike"; value: unknown };
-export type DataRequest = {
-  method: "select" | "insert" | "update" | "delete";
-  select?: string;
-  filters?: Filter[];
-  order?: { column: string; ascending: boolean };
-  limit?: number;
-  head?: boolean;
-  values?: Record<string, unknown> | Record<string, unknown>[];
-  single?: boolean;
-};
+const filterSchema = z.object({
+  column: z.string().min(1).max(64).regex(/^[a-z_]+$/),
+  operator: z.enum(["eq", "in", "gte", "lte", "lt", "ilike"]),
+  value: z.unknown(),
+}).strict();
+
+type Filter = z.infer<typeof filterSchema>;
+
+const valuesSchema = z.record(z.string().min(1).max(64), z.unknown());
+
+export const dataRequestSchema = z.object({
+  method: z.enum(["select", "insert", "update", "delete"]),
+  select: z.string().max(2_000).optional(),
+  filters: z.array(filterSchema).max(20).default([]),
+  order: z.object({
+    column: z.string().min(1).max(64).regex(/^[a-z_]+$/),
+    ascending: z.boolean(),
+  }).strict().optional(),
+  limit: z.number().int().min(1).max(500).optional(),
+  head: z.boolean().optional(),
+  values: z.union([valuesSchema, z.array(valuesSchema).min(1).max(500)]).optional(),
+  single: z.boolean().optional(),
+}).strict().superRefine((request, context) => {
+  if ((request.method === "insert" || request.method === "update") && request.values === undefined) {
+    context.addIssue({ code: "custom", path: ["values"], message: "Values are required" });
+  }
+  if ((request.method === "update" || request.method === "delete") && request.filters.length === 0) {
+    context.addIssue({ code: "custom", path: ["filters"], message: "A filter is required for mutations" });
+  }
+});
+
+export type DataRequest = z.input<typeof dataRequestSchema>;
 
 type TableConfig = { columns: readonly string[]; mutable: readonly string[]; relation?: string };
 
@@ -113,13 +135,13 @@ export class Repository {
     if (!config) throw new Error("Unsupported table");
     const table = tableName(tableInput);
     if (table === "users" && request.method !== "select" && request.method !== "update") throw new Error("Unsupported operation");
-    return request.method === "select"
-      ? this.select(table, config, request)
-      : request.method === "insert"
-        ? this.insert(table, config, request)
-        : request.method === "update"
-          ? this.update(table, config, request)
-          : this.delete(table, config, request);
+    switch (request.method) {
+      case "select": return this.select(table, config, request);
+      case "insert": return this.insert(table, config, request);
+      case "update": return this.update(table, config, request);
+      case "delete": return this.delete(table, config, request);
+      default: throw new Error("Unsupported operation");
+    }
   }
 
   private async select(table: string, config: TableConfig, req: DataRequest) {
@@ -171,6 +193,7 @@ export class Repository {
   }
 
   private async update(table: string, config: TableConfig, req: DataRequest) {
+    if (!req.filters?.length) throw new Error("A filter is required for updates");
     const row = cleanValues(config, Array.isArray(req.values) ? req.values[0] : req.values || {});
     if (timestamped.has(table)) row.updated_at = new Date().toISOString();
     const entries = Object.entries(row);
@@ -185,6 +208,7 @@ export class Repository {
   }
 
   private async delete(table: string, config: TableConfig, req: DataRequest) {
+    if (!req.filters?.length) throw new Error("A filter is required for deletes");
     const where = conditions(config, req.filters, this.user.id);
     const result = await this.db.prepare(`DELETE FROM "${table}" AS t WHERE ${where.sql} RETURNING *`).bind(...where.values).all<Record<string, unknown>>();
     const data = result.results.map(outputRow);
