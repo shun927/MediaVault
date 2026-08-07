@@ -47,7 +47,7 @@ function StatusPageContent() {
         void load();
     }, [allowedStatuses]);
 
-    const activeLabel = SIDEBAR_STATUS_OPTIONS.find((option) => option.value === view)?.label || 'Status';
+    const activeLabel = SIDEBAR_STATUS_OPTIONS.find((option) => option.value === view)?.label || '状態';
     const total = movies.length + books.length + music.length;
 
     return (
@@ -56,7 +56,7 @@ function StatusPageContent() {
                 <div className="app-topbar-main">
                     <div className="app-topbar-title">
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{activeLabel}</h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">{total} titles</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">{total}作品</p>
                     </div>
                     <div className="app-pill-group">
                         {SIDEBAR_STATUS_OPTIONS.map((option) => (
@@ -82,7 +82,7 @@ function StatusPageContent() {
                 ) : total === 0 ? (
                     <Card hover={false}>
                         <div className="text-center py-12 text-[var(--text-muted)]">
-                            <p className="text-lg mb-1 font-semibold text-[var(--text-primary)]">No titles in {activeLabel}</p>
+                            <p className="text-lg mb-1 font-semibold text-[var(--text-primary)]">{activeLabel}の作品はありません</p>
                             <p className="text-sm text-[var(--text-muted)]">作品を追加または更新すると、ここに表示されます。</p>
                         </div>
                     </Card>
@@ -134,7 +134,7 @@ function StatusSection({
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">画像なし</div>
                                 )}
                             </div>
                             <div className="p-3 space-y-1.5">

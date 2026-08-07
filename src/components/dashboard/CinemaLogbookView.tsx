@@ -62,7 +62,7 @@ export default function CinemaLogbookView() {
     return (
         <div className={styles.root}>
             <header className={styles.toolbar}>
-                <h1 className={`${styles.pageTitle} ${styles.fontExpressive}`}>Cinema<br />Logbook</h1>
+                <h1 className={`${styles.pageTitle} ${styles.fontExpressive}`}>映画ログ</h1>
                 <div className={styles.controls}>
                     <input
                         type="text"
@@ -98,26 +98,26 @@ export default function CinemaLogbookView() {
                 <div className={`${styles.stats} ${styles.fontData}`}>
                     <div className={styles.statItem}>
                         <div className={styles.statValue}>{watchedHours}</div>
-                        <div className={styles.statLabel}>Hours</div>
+                        <div className={styles.statLabel}>視聴時間</div>
                     </div>
                     <div className={styles.statItem}>
                         <div className={styles.statValue}>{movieCount}</div>
-                        <div className={styles.statLabel}>Movies</div>
+                        <div className={styles.statLabel}>映画</div>
                     </div>
                     <div className={styles.statItem}>
                         <div className={styles.statValue}>{avgRating ? avgRating.toFixed(1) : '-'}</div>
-                        <div className={styles.statLabel}>Avg Rating</div>
+                        <div className={styles.statLabel}>平均評価</div>
                     </div>
                 </div>
 
                 {filteredMovies.length === 0 ? (
-                    <div className={styles.empty}>No movies found. Try a different search.</div>
+                    <div className={styles.empty}>該当する映画がありません。検索条件を変えてください。</div>
                 ) : (
                     <div className={styles.mediaGrid}>
                         {filteredMovies.map((item, index) => (
                             <Link key={item.id} href={`/movies/${item.id}`} className={styles.mediaCard}>
                                 <div className={styles.cardImageWrap}>
-                                    {index === 0 && <div className={styles.sticker}>NEW</div>}
+                                    {index === 0 && <div className={styles.sticker}>新着</div>}
                                     <Image
                                         src={item.poster_url || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=600&fit=crop'}
                                         className={styles.cardImage}

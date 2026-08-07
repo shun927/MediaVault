@@ -14,9 +14,9 @@ type User = { id: string; email?: string; user_metadata: Record<string, unknown>
 
 const PRESET_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#64748b', '#a855f7'];
 const THEME_OPTIONS = [
-    { key: 'dark', label: 'Dark' },
-    { key: 'monochrome', label: 'Monochrome' },
-    { key: 'cobalt', label: 'Cobalt' },
+    { key: 'dark', label: 'ダーク' },
+    { key: 'monochrome', label: 'モノクロ' },
+    { key: 'cobalt', label: 'コバルト' },
 ] as const;
 type ThemeKey = typeof THEME_OPTIONS[number]['key'];
 
@@ -144,7 +144,7 @@ export default function SettingsPage() {
     }
 
     async function deleteTag(id: string) {
-        if (!confirm('Delete this tag?')) return;
+        if (!confirm('このタグを削除しますか？')) return;
         const dataClient = createClient();
         await dataClient.from('tags').delete().eq('id', id);
         loadTags();
@@ -162,7 +162,7 @@ export default function SettingsPage() {
             a.click();
             URL.revokeObjectURL(url);
         } catch {
-            alert('Export failed');
+            alert('エクスポートに失敗しました');
         }
         setExporting(false);
     }
@@ -181,14 +181,14 @@ export default function SettingsPage() {
                 body: JSON.stringify(data),
             });
             if (res.ok) {
-                setImportResult('Import completed successfully!');
+                setImportResult('インポートが完了しました');
                 await loadTags();
                 await loadProfile();
             } else {
-                setImportResult('Import failed');
+                setImportResult('インポートに失敗しました');
             }
         } catch {
-            setImportResult('Failed to read file');
+            setImportResult('ファイルを読み込めませんでした');
         }
         setImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -233,7 +233,7 @@ export default function SettingsPage() {
                                 <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-tertiary)] px-3 py-3">
                                     <div className="relative w-14 h-14 rounded-full overflow-hidden border border-[var(--border)] shrink-0" style={{ background: 'var(--bg-secondary)' }}>
                                         {profile?.avatar_url ? (
-                                            <Image src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" fill sizes="56px" />
+                                            <Image src={profile.avatar_url} alt="プロフィール画像" className="w-full h-full object-cover" fill sizes="56px" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[var(--text-muted)]">
                                                 {(profile?.display_name || 'U').charAt(0).toUpperCase()}
@@ -241,24 +241,24 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{profile?.display_name || 'User'}</p>
+                                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{profile?.display_name || 'ユーザー'}</p>
                                         {profile ? (
                                             <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                                                Joined {new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                                                登録日：{new Date(profile.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' })}
                                             </p>
                                         ) : null}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <StatCard label="Total Items" value={totalItems} />
+                                    <StatCard label="登録作品" value={totalItems} />
                                     <StatCard label="映画・TV" value={stats.movies} />
                                     <StatCard label="本" value={stats.books} />
                                     <StatCard label="音楽" value={stats.music} />
-                                    <StatCard label="Tags" value={stats.tags} />
-                                    <StatCard label="In Progress" value={statusStats.inProgress} />
-                                    <StatCard label="On the List" value={statusStats.onList} />
-                                    <StatCard label="Completed" value={statusStats.completed} />
+                                    <StatCard label="タグ" value={stats.tags} />
+                                    <StatCard label="進行中" value={statusStats.inProgress} />
+                                    <StatCard label="あとで見る" value={statusStats.onList} />
+                                    <StatCard label="完了" value={statusStats.completed} />
                                 </div>
                             </div>
                         )}
@@ -267,7 +267,7 @@ export default function SettingsPage() {
                     <Card hover={false} className="h-full p-4">
                         <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>テーマ</h2>
                         <p className="text-sm text-[var(--text-muted)] mb-3">
-                            Choose color theme
+                            カラーテーマを選択します
                         </p>
                         <div className="grid grid-cols-1 gap-2">
                             {THEME_OPTIONS.map((option) => (
@@ -285,7 +285,7 @@ export default function SettingsPage() {
 
                     <Card hover={false} className="h-full p-4 flex flex-col">
                         <h2 className="text-base font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>データとアカウント</h2>
-                        <p className="text-sm text-[var(--text-muted)] mb-3">Export/import your records and manage your session.</p>
+                        <p className="text-sm text-[var(--text-muted)] mb-3">記録の書き出し・読み込みとログイン状態を管理します。</p>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                             <Button className="py-1.5" onClick={handleLogout} variant="danger">ログアウト</Button>
                         </div>
                         {importResult && (
-                            <p className={`mt-3 text-sm ${importResult.includes('successfully') ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className={`mt-3 text-sm ${importResult.includes('完了') ? 'text-green-400' : 'text-red-400'}`}>
                                 {importResult}
                             </p>
                         )}
@@ -313,14 +313,14 @@ export default function SettingsPage() {
                                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>タグ管理</h2>
                                 <p className="text-sm text-[var(--text-muted)] mt-1">タグの作成、編集、削除ができます</p>
                             </div>
-                            <Button onClick={() => { setShowCreateTag(true); setTagForm({ name: '', color: '#6366f1' }); }}>+ Create Tag</Button>
+                            <Button onClick={() => { setShowCreateTag(true); setTagForm({ name: '', color: '#6366f1' }); }}>＋ タグを作成</Button>
                         </div>
 
                         {tagLoading ? (
                             <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="animate-shimmer rounded-xl h-14" />)}</div>
                         ) : tags.length === 0 ? (
                             <div className="text-center py-10 text-[var(--text-muted)]">
-                                <p className="text-sm">No tags yet. Create one to organize your collection.</p>
+                                <p className="text-sm">タグはまだありません。作品の整理に使うタグを作成できます。</p>
                             </div>
                         ) : (
                             <div className="space-y-2">
@@ -328,7 +328,7 @@ export default function SettingsPage() {
                                     <div key={tag.id} className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}>
                                         <div className="flex items-center gap-3">
                                             <Badge label={tag.name} color={tag.color} size="md" />
-                                            <span className="text-xs text-[var(--text-muted)]">{tagCounts[tag.id] || 0} items</span>
+                                            <span className="text-xs text-[var(--text-muted)]">{tagCounts[tag.id] || 0}作品</span>
                                         </div>
                                         <div className="flex gap-2">
                                             <button onClick={() => { setEditTag(tag); setTagForm({ name: tag.name, color: tag.color }); }} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer">
@@ -349,13 +349,13 @@ export default function SettingsPage() {
             <Modal
                 isOpen={showCreateTag || !!editTag}
                 onClose={() => { setShowCreateTag(false); setEditTag(null); }}
-                title={editTag ? 'Edit Tag' : 'Create Tag'}
+                title={editTag ? 'タグを編集' : 'タグを作成'}
                 size="sm"
             >
                 <div className="space-y-4">
-                    <Input label="Name" placeholder="e.g. Sci-Fi, Mystery..." value={tagForm.name} onChange={e => setTagForm(p => ({ ...p, name: e.target.value }))} />
+                    <Input label="名前" placeholder="例：SF、ミステリー" value={tagForm.name} onChange={e => setTagForm(p => ({ ...p, name: e.target.value }))} />
                     <div>
-                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Color</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">色</label>
                         <div className="flex flex-wrap gap-2">
                             {PRESET_COLORS.map(color => (
                                 <button
@@ -369,10 +369,10 @@ export default function SettingsPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3 pt-1">
-                        <span className="text-sm text-[var(--text-primary)]/50">Preview:</span>
-                        <Badge label={tagForm.name || 'Tag Name'} color={tagForm.color} size="md" />
+                        <span className="text-sm text-[var(--text-primary)]/50">プレビュー：</span>
+                        <Badge label={tagForm.name || 'タグ名'} color={tagForm.color} size="md" />
                     </div>
-                    <Button onClick={editTag ? updateTag : createTag} className="w-full">{editTag ? 'Update' : 'Create'}</Button>
+                    <Button onClick={editTag ? updateTag : createTag} className="w-full">{editTag ? '更新する' : '作成する'}</Button>
                 </div>
             </Modal>
         </div>

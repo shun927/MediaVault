@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { generateKeyPair, SignJWT } from "jose";
 import { authenticateRequest, forbidden, verifyAccessToken } from "@/lib/auth";
 import type { MediaVaultEnv } from "@/lib/cloudflare";
@@ -46,7 +46,12 @@ describe("Cloudflare Access JWT", () => {
     await expect(verifyAccessToken(await token({ audience: "wrong" }), env, publicKey)).rejects.toThrow();
   });
   it("rejects a request without an Access assertion as 403", async () => {
-    await expect(authenticateRequest(new Request("https://app.example"), env)).rejects.toThrow("token is required");
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      await expect(authenticateRequest(new Request("https://app.example"), env, { syncUser: false })).rejects.toThrow("token is required");
+    } finally {
+      vi.unstubAllEnvs();
+    }
     expect(forbidden().status).toBe(403);
   });
 });

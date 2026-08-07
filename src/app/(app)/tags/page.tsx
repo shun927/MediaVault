@@ -65,7 +65,7 @@ export default function TagsPage() {
     }
 
     async function deleteTag(id: string) {
-        if (!confirm('Delete this tag?')) return;
+        if (!confirm('このタグを削除しますか？')) return;
         const dataClient = createClient();
         await dataClient.from('tags').delete().eq('id', id);
         loadTags();
@@ -75,10 +75,10 @@ export default function TagsPage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Tags</h1>
-                    <p className="text-sm text-[var(--text-muted)] mt-1">{tags.length} tags</p>
+                    <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>タグ</h1>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">{tags.length}件</p>
                 </div>
-                <Button onClick={() => { setShowCreate(true); setForm({ name: '', color: '#6366f1' }); }}>+ Create Tag</Button>
+                <Button onClick={() => { setShowCreate(true); setForm({ name: '', color: '#6366f1' }); }}>＋ タグを作成</Button>
             </div>
 
             {loading ? (
@@ -86,8 +86,8 @@ export default function TagsPage() {
             ) : tags.length === 0 ? (
                 <Card hover={false}>
                     <div className="text-center py-12 text-[var(--text-muted)]">
-                        <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>No Tags</p>
-                        <p className="text-sm">Create tags to organize your collection</p>
+                        <p className="text-lg mb-2 font-medium" style={{ color: '#556' }}>タグはありません</p>
+                        <p className="text-sm">作品を整理するためのタグを作成できます</p>
                     </div>
                 </Card>
             ) : (
@@ -96,7 +96,7 @@ export default function TagsPage() {
                         <Card key={tag.id} className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Badge label={tag.name} color={tag.color} size="md" />
-                                <span className="text-xs text-[var(--text-muted)]">{tagCounts[tag.id] || 0} items</span>
+                                <span className="text-xs text-[var(--text-muted)]">{tagCounts[tag.id] || 0}作品</span>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => { setEditTag(tag); setForm({ name: tag.name, color: tag.color }); }} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors cursor-pointer">
@@ -112,11 +112,11 @@ export default function TagsPage() {
             )}
 
             {/* 作成 / 編集モーダル */}
-            <Modal isOpen={showCreate || !!editTag} onClose={() => { setShowCreate(false); setEditTag(null); }} title={editTag ? 'Edit Tag' : 'Create Tag'} size="sm">
+            <Modal isOpen={showCreate || !!editTag} onClose={() => { setShowCreate(false); setEditTag(null); }} title={editTag ? 'タグを編集' : 'タグを作成'} size="sm">
                 <div className="space-y-4">
-                    <Input label="Name" placeholder="e.g. Sci-Fi, Mystery..." value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                    <Input label="名前" placeholder="例：SF、ミステリー" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
                     <div>
-                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Color</label>
+                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">色</label>
                         <div className="flex flex-wrap gap-2">
                             {PRESET_COLORS.map(color => (
                                 <button key={color} onClick={() => setForm(p => ({ ...p, color }))} className={`w-8 h-8 rounded-full cursor-pointer transition-transform hover:scale-110 ${form.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--bg-secondary)] scale-110' : ''}`} style={{ backgroundColor: color }} />
@@ -124,10 +124,10 @@ export default function TagsPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3 pt-1">
-                        <span className="text-sm text-[var(--text-primary)]/50">Preview:</span>
-                        <Badge label={form.name || 'Tag Name'} color={form.color} size="md" />
+                        <span className="text-sm text-[var(--text-primary)]/50">プレビュー：</span>
+                        <Badge label={form.name || 'タグ名'} color={form.color} size="md" />
                     </div>
-                    <Button onClick={editTag ? updateTag : createTag} className="w-full">{editTag ? 'Update' : 'Create'}</Button>
+                    <Button onClick={editTag ? updateTag : createTag} className="w-full">{editTag ? '更新する' : '作成する'}</Button>
                 </div>
             </Modal>
         </div>

@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MediaVault — Media Tracker",
-  description: "Track and organize your films, books, and more",
+  title: "MediaVault — メディア記録",
+  description: "映画・本・音楽を記録して整理する個人用ライブラリ",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

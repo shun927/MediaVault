@@ -40,7 +40,7 @@ export default function MusicPage() {
                 <div className="app-topbar-controls">
                     <div className="app-topbar-title">
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>音楽</h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">{music.length} titles</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">{music.length}作品</p>
                     </div>
                     <div className="app-topbar-controls ml-auto">
                         <input
@@ -57,8 +57,8 @@ export default function MusicPage() {
                         </select>
                         <select className="app-control-select" value={sort} onChange={(e) => setSort(e.target.value)}>
                             <option value="created_at">追加が新しい順</option>
-                            <option value="title">Title</option>
-                            <option value="rating">Rating</option>
+                            <option value="title">タイトル順</option>
+                            <option value="rating">評価順</option>
                         </select>
                         <Link href="/search?tab=music">
                             <Button>＋ 音楽を追加</Button>
@@ -98,7 +98,7 @@ export default function MusicPage() {
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">画像なし</div>
                                         )}
                                     </div>
                                     <div className="p-3 space-y-1.5">

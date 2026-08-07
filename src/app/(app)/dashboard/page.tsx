@@ -51,7 +51,7 @@ export default function DashboardPage() {
                 rating: movie.rating,
                 createdAt: movie.created_at,
                 href: `/movies/${movie.id}`,
-                badgeLabel: movie.media_type === 'tv' ? 'TV' : 'FILM',
+                badgeLabel: movie.media_type === 'tv' ? 'TV' : '映画',
             }));
             const bookItems = ((booksRes.data as Book[]) || []).map((book) => ({
                 id: book.id,
@@ -61,7 +61,7 @@ export default function DashboardPage() {
                 rating: book.rating,
                 createdAt: book.created_at,
                 href: `/books/${book.id}`,
-                badgeLabel: 'BOOK',
+                badgeLabel: '本',
             }));
             const musicItems = ((musicRes.data as Music[]) || []).map((item) => ({
                 id: item.id,
@@ -71,7 +71,7 @@ export default function DashboardPage() {
                 rating: item.rating,
                 createdAt: item.created_at,
                 href: `/music/${item.id}`,
-                badgeLabel: 'MUSIC',
+                badgeLabel: '音楽',
             }));
 
             const merged = [...movieItems, ...bookItems, ...musicItems].sort(
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
-                    <button className={`${styles.iconBtn} ${styles.sortBtn}`} aria-label={`sort: ${sortLabel}`} title={`Sort: ${sortLabel}`} type="button" onClick={cycleSortMode}>
+                    <button className={`${styles.iconBtn} ${styles.sortBtn}`} aria-label={`並び替え：${sortLabel}`} title={`並び替え：${sortLabel}`} type="button" onClick={cycleSortMode}>
                         <span className={styles.sortBtnLabel}>{sortLabel}</span>
                         <span className={styles.sortBtnLabelShort}>{sortLabelShort}</span>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -167,8 +167,8 @@ export default function DashboardPage() {
                     </button>
                     <button
                         className={`${styles.iconBtn} ${styles.viewToggleBtn}`}
-                        aria-label={`view: ${viewMode}`}
-                        title={`View: ${viewMode === 'grid' ? 'Grid' : 'Compact'}`}
+                        aria-label={`表示：${viewMode === 'grid' ? 'グリッド' : 'コンパクト'}`}
+                        title={`表示：${viewMode === 'grid' ? 'グリッド' : 'コンパクト'}`}
                         type="button"
                         onClick={() => setViewMode((prev) => (prev === 'grid' ? 'compact' : 'grid'))}
                     >

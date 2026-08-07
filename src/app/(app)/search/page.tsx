@@ -76,9 +76,9 @@ function SearchPage() {
         const data = await res.json() as { items?: BookSearchResult[]; error?: string };
         setBookResults(data.items || []);
         if (!res.ok || data.error) {
-            setSearchError(data.error || `Search failed (${res.status})`);
+            setSearchError(`本の検索に失敗しました（${res.status}）`);
         } else if (!data.items?.length) {
-            setSearchError('No books found.');
+            setSearchError('該当する本が見つかりませんでした');
         }
     }
 
@@ -97,7 +97,7 @@ function SearchPage() {
                 const data = await res.json() as { results?: TMDBSearchResult[]; error?: string };
                 setMovieResults(data.results || []);
                 if (!res.ok || data.error) {
-                    setSearchError(data.error || `検索に失敗しました（${res.status}）`);
+                    setSearchError(data.error && /[ぁ-んァ-ヶ一-龠]/.test(data.error) ? data.error : `映画・TVの検索に失敗しました（${res.status}）`);
                 } else if (!data.results?.length) {
                     setSearchError('該当する映画・TVが見つかりませんでした');
                 }
@@ -111,13 +111,13 @@ function SearchPage() {
                 const data = await res.json() as { items?: SpotifySearchResult[]; error?: string };
                 setMusicResults(data.items || []);
                 if (!res.ok || data.error) {
-                    setSearchError(data.error || `Search failed (${res.status})`);
+                    setSearchError(`音楽の検索に失敗しました（${res.status}）`);
                 } else if (!data.items?.length) {
-                    setSearchError('No music found.');
+                    setSearchError('該当する音楽が見つかりませんでした');
                 }
             }
         } catch {
-            setSearchError('Search failed. Please try again.');
+            setSearchError('検索に失敗しました。時間をおいて再試行してください');
         }
         setSearching(false);
     }
@@ -234,7 +234,7 @@ function SearchPage() {
                     }
                 }
             } catch {
-                setScannerError('Failed to detect barcode. Please keep the barcode in frame and retry.');
+                setScannerError('バーコードを読み取れませんでした。枠内に収めて再試行してください。');
             }
             window.setTimeout(scanLoop, 220);
         };
@@ -283,13 +283,13 @@ function SearchPage() {
         stopLoopRef.current = false;
 
         if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
-            setScannerError('Camera API is not available in this browser.');
+            setScannerError('このブラウザではカメラを利用できません。');
             return;
         }
         try {
             await startNativeScanner();
         } catch {
-            setScannerError('Unable to access camera. Please allow camera permission and retry.');
+            setScannerError('カメラを利用できません。カメラの権限を許可して再試行してください。');
         }
     }
 
@@ -337,7 +337,7 @@ function SearchPage() {
                 router.push(`/${kind}/${result.data.id}`);
                 return;
             }
-            if (!response.ok) throw new Error(result.error || "Could not add item");
+            if (!response.ok) throw new Error(result.error && /[ぁ-んァ-ヶ一-龠]/.test(result.error) ? result.error : '作品を追加できませんでした');
             if (!result.data) throw new Error('追加結果を確認できませんでした');
             showToast('コレクションに追加しました', 'success');
             router.push(`/${kind}/${result.data.id}`);
@@ -346,7 +346,7 @@ function SearchPage() {
             setSelectedMusic(null);
             resetAddForm();
         } catch (error) {
-            setSearchError(error instanceof Error ? error.message : "Could not add item");
+            setSearchError(error instanceof Error ? error.message : '作品を追加できませんでした');
         } finally {
             setAdding(false);
         }
@@ -479,7 +479,7 @@ function SearchPage() {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">画像なし</div>
                                 )}
                             </div>
                             <div className="p-3 space-y-1">
@@ -489,7 +489,7 @@ function SearchPage() {
                                         className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
                                         style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
                                     >
-                                        {item.media_type === 'tv' ? 'TV' : 'Film'}
+                                        {item.media_type === 'tv' ? 'TV' : '映画'}
                                     </span>
                                 </div>
                                 {item.release_date && <p className="text-xs text-[var(--text-muted)]">{item.release_date.substring(0, 4)}</p>}
@@ -519,7 +519,7 @@ function SearchPage() {
                                             className="w-full h-full object-cover"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">画像なし</div>
                                     )}
                                 </div>
                                 <div className="p-3 space-y-1">
@@ -529,7 +529,7 @@ function SearchPage() {
                                             className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
                                             style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
                                         >
-                                            {item.type}
+                                            {item.type === 'track' ? '曲' : 'アルバム'}
                                         </span>
                                     </div>
                                     {item.artist && <p className="text-xs text-[var(--text-muted)] line-clamp-1">{item.artist}</p>}
@@ -561,7 +561,7 @@ function SearchPage() {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">NO IMAGE</div>
+                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--text-muted)]">画像なし</div>
                                 )}
                             </div>
                             <div className="p-3 space-y-1">
@@ -574,7 +574,7 @@ function SearchPage() {
             )}
 
             {/* 映画・TV追加モーダル */}
-            <Modal isOpen={!!selectedMovie} onClose={() => setSelectedMovie(null)} title={selectedMovie?.media_type === 'tv' ? 'Add TV Show' : 'Add Film'}>
+            <Modal isOpen={!!selectedMovie} onClose={() => setSelectedMovie(null)} title={selectedMovie?.media_type === 'tv' ? 'TV番組を追加' : '映画を追加'}>
                 {selectedMovie && (
                     <div className="space-y-4">
                         <div className="flex gap-3">
@@ -594,28 +594,28 @@ function SearchPage() {
                                         className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
                                         style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
                                     >
-                                        {selectedMovie.media_type === 'tv' ? 'TV' : 'Film'}
+                                        {selectedMovie.media_type === 'tv' ? 'TV' : '映画'}
                                     </span>
                                 </div>
                                 {selectedMovie.release_date && <p className="text-xs text-[var(--text-muted)]">{selectedMovie.release_date.substring(0, 4)}</p>}
                                 {selectedMovie.overview && <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-3">{selectedMovie.overview}</p>}
                             </div>
                         </div>
-                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
-                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MOVIE_STATUS_OPTIONS} />
+                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">評価</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
+                        <Select label="状態" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MOVIE_STATUS_OPTIONS} />
 
                         {/* TV用進捗入力 */}
                         {selectedMovie.media_type === 'tv' && (
                             <div className="p-3 rounded-[4px] border border-[var(--border)] bg-[var(--bg-tertiary)] space-y-2">
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Watch Progress</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">視聴進捗</label>
                                 {selectedMovie.number_of_seasons && (
                                     <p className="text-xs text-[var(--text-muted)]">
-                                        {selectedMovie.number_of_seasons} season{selectedMovie.number_of_seasons > 1 ? 's' : ''}
-                                        {selectedMovie.number_of_episodes && ` · ${selectedMovie.number_of_episodes} episodes`}
+                                        {selectedMovie.number_of_seasons}シーズン
+                                        {selectedMovie.number_of_episodes && ` · 全${selectedMovie.number_of_episodes}話`}
                                     </p>
                                 )}
                                 <div className="flex items-center gap-2">
-                                    <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">Watched up to episode</label>
+                                    <label className="text-xs text-[var(--text-muted)] whitespace-nowrap">視聴済み話数</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -629,10 +629,10 @@ function SearchPage() {
                             </div>
                         )}
 
-                        <Textarea label="Notes" placeholder="Write your thoughts..." value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
+                        <Textarea label="メモ" placeholder="感想やメモを入力…" value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
                         {tags.length > 0 && (
                             <div>
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">タグ</label>
                                 <div className="flex flex-wrap gap-2">
                                     {tags.map(tag => (
                                         <button key={tag.id} type="button" onClick={() => setAddForm(p => ({ ...p, selectedTags: p.selectedTags.includes(tag.id) ? p.selectedTags.filter(id => id !== tag.id) : [...p.selectedTags, tag.id] }))} className={`cursor-pointer ${addForm.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''} rounded-full`}>
@@ -642,13 +642,13 @@ function SearchPage() {
                                 </div>
                             </div>
                         )}
-                        <Button onClick={addMovie} isLoading={adding} className="w-full">Add to Collection</Button>
+                        <Button onClick={addMovie} isLoading={adding} className="w-full">コレクションに追加</Button>
                     </div>
                 )}
             </Modal>
 
             {/* 本追加モーダル */}
-            <Modal isOpen={!!selectedBook} onClose={() => setSelectedBook(null)} title="Add Book">
+            <Modal isOpen={!!selectedBook} onClose={() => setSelectedBook(null)} title="本を追加">
                 {selectedBook && (
                     <div className="space-y-4">
                         <div className="flex gap-3">
@@ -666,12 +666,12 @@ function SearchPage() {
                                 {selectedBook.author && <p className="text-xs text-[var(--text-muted)]">{selectedBook.author}</p>}
                             </div>
                         </div>
-                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
-                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={BOOK_STATUS_OPTIONS} />
-                        <Textarea label="Notes" placeholder="Write your thoughts..." value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
+                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">評価</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
+                        <Select label="状態" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={BOOK_STATUS_OPTIONS} />
+                        <Textarea label="メモ" placeholder="感想やメモを入力…" value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
                         {tags.length > 0 && (
                             <div>
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">タグ</label>
                                 <div className="flex flex-wrap gap-2">
                                     {tags.map(tag => (
                                         <button key={tag.id} type="button" onClick={() => setAddForm(p => ({ ...p, selectedTags: p.selectedTags.includes(tag.id) ? p.selectedTags.filter(id => id !== tag.id) : [...p.selectedTags, tag.id] }))} className={`cursor-pointer ${addForm.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''} rounded-full`}>
@@ -681,13 +681,13 @@ function SearchPage() {
                                 </div>
                             </div>
                         )}
-                        <Button onClick={addBook} isLoading={adding} className="w-full">Add to Collection</Button>
+                        <Button onClick={addBook} isLoading={adding} className="w-full">コレクションに追加</Button>
                     </div>
                 )}
             </Modal>
 
             {/* 音楽追加モーダル */}
-            <Modal isOpen={!!selectedMusic} onClose={() => setSelectedMusic(null)} title={selectedMusic?.type === 'album' ? 'Add Album' : 'Add Track'}>
+            <Modal isOpen={!!selectedMusic} onClose={() => setSelectedMusic(null)} title={selectedMusic?.type === 'album' ? 'アルバムを追加' : '曲を追加'}>
                 {selectedMusic && (
                     <div className="space-y-4">
                         <div className="flex gap-3">
@@ -707,7 +707,7 @@ function SearchPage() {
                                         className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
                                         style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
                                     >
-                                        {selectedMusic.type}
+                                        {selectedMusic.type === 'track' ? '曲' : 'アルバム'}
                                     </span>
                                 </div>
                                 {selectedMusic.artist && <p className="text-xs text-[var(--text-muted)] mt-0.5">{selectedMusic.artist}</p>}
@@ -721,17 +721,17 @@ function SearchPage() {
                                         className="text-xs text-[var(--accent)] hover:underline inline-block mt-1"
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        Open in Spotify
+                                        Spotifyで開く
                                     </a>
                                 )}
                             </div>
                         </div>
-                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
-                        <Select label="Status" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MUSIC_STATUS_OPTIONS} />
-                        <Textarea label="Notes" placeholder="Write your thoughts..." value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
+                        <div><label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">評価</label><StarRating value={addForm.rating} onChange={v => setAddForm(p => ({ ...p, rating: v }))} size="lg" /></div>
+                        <Select label="状態" value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))} options={MUSIC_STATUS_OPTIONS} />
+                        <Textarea label="メモ" placeholder="感想やメモを入力…" value={addForm.note} onChange={e => setAddForm(p => ({ ...p, note: e.target.value }))} />
                         {tags.length > 0 && (
                             <div>
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">タグ</label>
                                 <div className="flex flex-wrap gap-2">
                                     {tags.map(tag => (
                                         <button key={tag.id} type="button" onClick={() => setAddForm(p => ({ ...p, selectedTags: p.selectedTags.includes(tag.id) ? p.selectedTags.filter(id => id !== tag.id) : [...p.selectedTags, tag.id] }))} className={`cursor-pointer ${addForm.selectedTags.includes(tag.id) ? 'ring-2 ring-white/30' : ''} rounded-full`}>
@@ -741,13 +741,13 @@ function SearchPage() {
                                 </div>
                             </div>
                         )}
-                        <Button onClick={addMusic} isLoading={adding} className="w-full">Add to Collection</Button>
+                        <Button onClick={addMusic} isLoading={adding} className="w-full">コレクションに追加</Button>
                     </div>
                 )}
             </Modal>
 
             {/* ISBNスキャナ */}
-            <Modal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} title="Scan ISBN Barcode">
+            <Modal isOpen={scannerOpen} onClose={() => setScannerOpen(false)} title="ISBNバーコードを読み取る">
                 <div className="space-y-3">
                     <p className="text-sm text-[var(--text-muted)]">
                         本のバーコードをカメラにかざすと自動で検索します。
@@ -767,9 +767,9 @@ function SearchPage() {
                     )}
                     {scannerError && <p className="text-xs text-red-400">{scannerError}</p>}
                     <div className="flex items-center justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setScannerOpen(false)}>Close</Button>
+                        <Button variant="secondary" onClick={() => setScannerOpen(false)}>閉じる</Button>
                         {!scannerActive && barcodeSupported && (
-                            <Button onClick={startScanner}>Retry</Button>
+                            <Button onClick={startScanner}>再試行</Button>
                         )}
                     </div>
                 </div>

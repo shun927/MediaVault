@@ -529,7 +529,7 @@ function TimelinePageContent() {
                             </div>
                         </div>
 
-                        <nav className="timeline-year-nav" aria-label="Timeline years">
+                        <nav className="timeline-year-nav" aria-label="タイムラインの年を選択">
                             {years.map((year) => (
                                 <button
                                     key={`nav-${year}`}

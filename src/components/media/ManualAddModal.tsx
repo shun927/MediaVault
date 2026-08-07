@@ -58,7 +58,7 @@ export default function ManualAddModal({ initialKind, tags }: { initialKind: Lib
         try {
             const response = await fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, item, tagIds: form.tagIds, addHistory: completed }) });
             const payload = await response.json() as { data?: { id: string }; error?: string };
-            if (!response.ok || !payload.data) throw new Error(payload.error || '追加できませんでした');
+            if (!response.ok || !payload.data) throw new Error(payload.error && /[ぁ-んァ-ヶ一-龠]/.test(payload.error) ? payload.error : '追加できませんでした');
             showToast('コレクションに追加しました', 'success');
             setOpen(false);
             router.push(`/${kind}/${payload.data.id}`);

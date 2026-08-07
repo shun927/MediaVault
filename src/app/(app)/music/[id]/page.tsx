@@ -146,7 +146,7 @@ export default function MusicDetailPage() {
                         href="/music"
                         className="detail-page-back-link"
                     >
-                        ← Back to Music
+                        ← 音楽の一覧へ
                     </Link>
                 </div>
                 <div className="flex-1">
@@ -175,7 +175,7 @@ export default function MusicDetailPage() {
                         </div>
 
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-2 gap-x-3 text-sm leading-relaxed">
-                            <span className="text-[var(--text-muted)]">Rating</span>
+                            <span className="text-[var(--text-muted)]">評価</span>
                             <div className="flex items-center gap-2">
                                 <StarRating value={item.rating || 0} readonly size="sm" />
                                 <span className="text-[var(--text-secondary)]">{item.rating ? `${item.rating}/5` : 'Not rated'}</span>
@@ -183,7 +183,7 @@ export default function MusicDetailPage() {
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
-                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Tags</h4>
+                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">タグ</h4>
                             {editMeta.selectedTags.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                     {allTags
@@ -193,19 +193,19 @@ export default function MusicDetailPage() {
                                         ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">No tags</p>
+                                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">タグなし</p>
                             )}
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
-                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Comment</h4>
-                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.note || 'No comment'}</p>
+                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">メモ</h4>
+                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{item.note || 'コメントはありません'}</p>
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
                             <div className="mb-3">
                                 <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
-                                    Listening History
+                                    再生履歴
                                     {history.length > 0 && <span className="ml-2 text-[var(--text-primary)]">({history.length})</span>}
                                 </h4>
                             </div>
@@ -229,7 +229,7 @@ export default function MusicDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-[var(--text-muted)] italic">No listening history logged yet</p>
+                                <p className="text-xs text-[var(--text-muted)] italic">再生履歴はまだありません</p>
                             )}
                         </div>
                     </Card>
@@ -238,11 +238,11 @@ export default function MusicDetailPage() {
                     <Card hover={false} className="space-y-3 !bg-[var(--bg-tertiary)] border border-[var(--border)]">
                         <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">編集</h3>
                         <div>
-                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">評価</label>
                             <StarRating value={editMeta.rating} onChange={(v) => setEditMeta((prev) => ({ ...prev, rating: v }))} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Status</label>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">状態</label>
                             <select
                                 value={editMeta.status}
                                 onChange={(e) => setEditMeta((prev) => ({ ...prev, status: e.target.value }))}
@@ -255,7 +255,7 @@ export default function MusicDetailPage() {
                         </div>
                         {allTags.length > 0 && (
                             <div>
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">タグ</label>
                                 <div className="flex flex-wrap gap-2">
                                     {allTags.map(tag => (
                                         <button
@@ -276,14 +276,14 @@ export default function MusicDetailPage() {
                             </div>
                         )}
                         <Textarea
-                            label="Comment"
-                            placeholder="Write your thoughts..."
+                            label="メモ"
+                            placeholder="感想やメモを入力…"
                             value={editMeta.note}
                             onChange={(e) => setEditMeta((prev) => ({ ...prev, note: e.target.value }))}
                         />
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Listening History (Edit)</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">再生履歴の編集</label>
                                 <button
                                     onClick={() => setShowHistoryForm(!showHistoryForm)}
                                     className="detail-page-history-trigger text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
@@ -294,7 +294,7 @@ export default function MusicDetailPage() {
                             {showHistoryForm && (
                                 <div className="space-y-3 mb-3 p-3 rounded-[4px] border border-[var(--border)] bg-[var(--bg-secondary)]">
                                     <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Date</label>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">日付</label>
                                         <input
                                             type="date"
                                             value={historyForm.date}
@@ -303,18 +303,18 @@ export default function MusicDetailPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Note (optional)</label>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">メモ（任意）</label>
                                         <input
                                             type="text"
                                             value={historyForm.note}
                                             onChange={e => setHistoryForm(p => ({ ...p, note: e.target.value }))}
-                                            placeholder="Thoughts on this relisten..."
+                                            placeholder="今回の再生メモ…"
                                             className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none placeholder:text-[var(--text-muted)]"
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <p className="text-xs text-[var(--text-muted)] self-center">Use &quot;Save Changes&quot; below to add this log.</p>
-                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
+                                        <p className="text-xs text-[var(--text-muted)] self-center">下の「変更を保存」で履歴を追加します。</p>
+                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>キャンセル</Button>
                                     </div>
                                 </div>
                             )}
@@ -338,7 +338,7 @@ export default function MusicDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-[var(--text-muted)] italic">No listening history to edit</p>
+                                <p className="text-xs text-[var(--text-muted)] italic">編集できる再生履歴はありません</p>
                             )}
                         </div>
                         <div className="flex items-center gap-3">

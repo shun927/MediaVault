@@ -178,7 +178,7 @@ export default function MovieDetailPage() {
                 <div className="flex-1 space-y-4">
                     {movie.overview && (
                         <div>
-                            <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Overview</h3>
+                            <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">概要</h3>
                             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{movie.overview}</p>
                         </div>
                     )}
@@ -190,7 +190,7 @@ export default function MovieDetailPage() {
                         </div>
 
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-y-2 gap-x-3 text-sm leading-relaxed">
-                            <span className="text-[var(--text-muted)]">Rating</span>
+                            <span className="text-[var(--text-muted)]">評価</span>
                             <div className="flex items-center gap-2">
                                 <StarRating value={movie.rating || 0} readonly size="sm" />
                                 <span className="text-[var(--text-secondary)]">{movie.rating ? `${movie.rating}/5` : 'Not rated'}</span>
@@ -198,7 +198,7 @@ export default function MovieDetailPage() {
 
                             {movie.media_type === 'tv' && (
                                 <>
-                                    <span className="text-[var(--text-muted)]">Progress</span>
+                                    <span className="text-[var(--text-muted)]">進捗</span>
                                     <span className="text-[var(--text-secondary)]">
                                         Ep. {movie.watched_episode || 0}
                                         {movie.number_of_episodes ? ` / ${movie.number_of_episodes}` : ''}
@@ -208,7 +208,7 @@ export default function MovieDetailPage() {
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
-                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Tags</h4>
+                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">タグ</h4>
                             {editMeta.selectedTags.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                     {allTags
@@ -218,18 +218,18 @@ export default function MovieDetailPage() {
                                         ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">No tags</p>
+                                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">タグなし</p>
                             )}
                         </div>
 
                         <div className="border-t border-[var(--border)] pt-3">
-                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Comment</h4>
-                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{movie.note || 'No comment'}</p>
+                            <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">メモ</h4>
+                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{movie.note || 'コメントはありません'}</p>
                         </div>
                         <div className="border-t border-[var(--border)] pt-3">
                             <div className="mb-3">
                                 <h4 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">
-                                    Watch History
+                                    視聴履歴
                                     {history.length > 0 && <span className="ml-2 text-[var(--text-primary)]">({history.length})</span>}
                                 </h4>
                             </div>
@@ -253,7 +253,7 @@ export default function MovieDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-[var(--text-muted)] italic">No watch history logged yet</p>
+                                <p className="text-xs text-[var(--text-muted)] italic">視聴履歴はまだありません</p>
                             )}
                         </div>
                     </Card>
@@ -262,11 +262,11 @@ export default function MovieDetailPage() {
                     <Card hover={false} className="space-y-3 !bg-[var(--bg-tertiary)] border border-[var(--border)]">
                         <h3 className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">編集</h3>
                         <div>
-                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Rating</label>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">評価</label>
                             <StarRating value={editMeta.rating} onChange={(v) => setEditMeta(prev => ({ ...prev, rating: v }))} />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Status</label>
+                            <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">状態</label>
                             <select
                                 value={editMeta.status}
                                 onChange={(e) => setEditMeta(prev => ({ ...prev, status: e.target.value }))}
@@ -280,7 +280,7 @@ export default function MovieDetailPage() {
                         {movie.media_type === 'tv' && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Total Episodes</label>
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">総話数</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -291,7 +291,7 @@ export default function MovieDetailPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Watched Episode</label>
+                                    <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">視聴済み話数</label>
                                     <input
                                         type="number"
                                         min="0"
@@ -306,7 +306,7 @@ export default function MovieDetailPage() {
                         )}
                         {allTags.length > 0 && (
                             <div>
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">Tags</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1.5">タグ</label>
                                 <div className="flex flex-wrap gap-2">
                                     {allTags.map(tag => (
                                         <button
@@ -327,14 +327,14 @@ export default function MovieDetailPage() {
                             </div>
                         )}
                         <Textarea
-                            label="Comment"
-                            placeholder="Write your thoughts..."
+                            label="メモ"
+                            placeholder="感想やメモを入力…"
                             value={editMeta.note}
                             onChange={(e) => setEditMeta(prev => ({ ...prev, note: e.target.value }))}
                         />
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Watch History (Edit)</label>
+                                <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">視聴履歴の編集</label>
                                 <button
                                     onClick={() => setShowHistoryForm(!showHistoryForm)}
                                     className="detail-page-history-trigger text-xs font-medium px-2.5 py-1 rounded-[4px] transition-colors cursor-pointer"
@@ -345,7 +345,7 @@ export default function MovieDetailPage() {
                             {showHistoryForm && (
                                 <div className="space-y-3 mb-3 p-3 rounded-[4px] border border-[var(--border)] bg-[var(--bg-secondary)]">
                                     <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Date</label>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">日付</label>
                                         <input
                                             type="date"
                                             value={historyForm.date}
@@ -354,18 +354,18 @@ export default function MovieDetailPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">Note (optional)</label>
+                                        <label className="block text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-1">メモ（任意）</label>
                                         <input
                                             type="text"
                                             value={historyForm.note}
                                             onChange={e => setHistoryForm(p => ({ ...p, note: e.target.value }))}
-                                            placeholder="Thoughts on this rewatch..."
+                                            placeholder="今回の視聴メモ…"
                                             className="w-full px-3 py-2 text-sm rounded-[4px] bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none placeholder:text-[var(--text-muted)]"
                                         />
                                     </div>
                                     <div className="flex gap-2">
-                                        <p className="text-xs text-[var(--text-muted)] self-center">Use &quot;Save Changes&quot; below to add this log.</p>
-                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>Cancel</Button>
+                                        <p className="text-xs text-[var(--text-muted)] self-center">下の「変更を保存」で履歴を追加します。</p>
+                                        <Button variant="secondary" onClick={() => setShowHistoryForm(false)}>キャンセル</Button>
                                     </div>
                                 </div>
                             )}
@@ -389,7 +389,7 @@ export default function MovieDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-[var(--text-muted)] italic">No watch history to edit</p>
+                                <p className="text-xs text-[var(--text-muted)] italic">編集できる視聴履歴はありません</p>
                             )}
                         </div>
                         <div className="flex items-center gap-3">

@@ -70,7 +70,7 @@ export default function MoviesPage() {
                 <div className="app-topbar-controls">
                     <div className="app-topbar-title">
                         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>映画・TV</h1>
-                        <p className="text-sm text-[var(--text-muted)] mt-1">{movies.length} titles</p>
+                        <p className="text-sm text-[var(--text-muted)] mt-1">{movies.length}作品</p>
                     </div>
                     <div className="app-topbar-controls ml-auto">
                         <input
@@ -87,8 +87,8 @@ export default function MoviesPage() {
                         </select>
                         <select className="app-control-select" value={sort} onChange={(e) => setSort(e.target.value)}>
                             <option value="created_at">追加が新しい順</option>
-                            <option value="title">Title</option>
-                            <option value="rating">Rating</option>
+                            <option value="title">タイトル順</option>
+                            <option value="rating">評価順</option>
                         </select>
                         <Link href="/search?tab=movies">
                             <Button>＋ 作品を追加</Button>
@@ -129,7 +129,7 @@ export default function MoviesPage() {
                                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">NO IMAGE</div>
+                                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-[var(--text-muted)]">画像なし</div>
                                         )}
                                     </div>
                                     <div className="p-3 space-y-1.5">
@@ -139,7 +139,7 @@ export default function MoviesPage() {
                                                 className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
                                                 style={{ backgroundColor: 'var(--media-accent-soft)', color: 'var(--media-accent)' }}
                                             >
-                                                {movie.media_type === 'tv' ? 'TV' : 'Film'}
+                                                {movie.media_type === 'tv' ? 'TV' : '映画'}
                                             </span>
                                         </div>
                                         {movie.year && <p className="text-xs text-[var(--text-muted)]">{movie.year}</p>}

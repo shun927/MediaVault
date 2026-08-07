@@ -27,7 +27,7 @@ export default function QuickLogButton({ kind, itemId, onLogged, className = '' 
                 body: JSON.stringify({}),
             });
             const payload = await response.json() as { data?: { occurredAt: string }; error?: string };
-            if (!response.ok || !payload.data) throw new Error(payload.error || '記録できませんでした');
+            if (!response.ok || !payload.data) throw new Error(payload.error && /[ぁ-んァ-ヶ一-龠]/.test(payload.error) ? payload.error : '記録できませんでした');
             onLogged?.(payload.data.occurredAt);
             showToast(`${labels[kind]}として記録しました`, 'success');
         } catch (error) {
